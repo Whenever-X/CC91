@@ -6,6 +6,7 @@ import {
   type Post, type AdminComment
 } from '../../api/admin';
 import ErrorMessage from '../../components/ErrorMessage';
+import { adminGetPosts, adminUpdatePostStatus, adminDeletePost } from '../../api/admin';
 import { queryKeys } from '../../lib/queryKeys';
 
 type TabType = 'posts' | 'comments';
@@ -95,14 +96,6 @@ export default function ContentModeration() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'PUBLISHED': return '已发布';
-      case 'DRAFT': return '草稿';
-      case 'DELETED': return '已删除';
-      default: return status;
-    }
-  };
 
   const clearMessages = () => {
     setError('');
