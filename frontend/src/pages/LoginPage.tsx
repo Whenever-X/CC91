@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ErrorMessage from '../components/ErrorMessage';
 import client from '../api/client';
 
 /**
@@ -39,6 +40,7 @@ export default function LoginPage() {
         const userResponse = await client.get(`/users/${username}`);
         userRole = userResponse.data.role || 'USER';
       } catch (err) {
+        // If user info fetch fails, default to regular user
         console.error('Failed to fetch user role', err);
       }
 
@@ -96,6 +98,8 @@ export default function LoginPage() {
               required
             />
           </div>
+
+          {error && <ErrorMessage message={error} onDismiss={() => setError('')} />}
 
           {/* Login Button */}
           <button

@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, type FormEvent } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -20,17 +22,20 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
 
   // 防抖处理搜索关键词
-  const debouncedKeyword = useDebounce(keyword, 500);
+  const debouncedKeyword = useDebounce(keyword, 300);
 
   // 进行搜索的 Query
   const { data: searchResults, isLoading } = useQuery({
     queryKey: queryKeys.posts.search(debouncedKeyword, page, 10),
     queryFn: () => searchPosts(debouncedKeyword, page, 10),
     enabled: searched && debouncedKeyword.trim().length > 0,
+    placeholderData: (prev) => prev,
   });
 
   const results = searchResults?.content || [];
   const totalPages = searchResults?.totalPages || 0;
+
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
     if (initialKeyword) {
@@ -39,6 +44,20 @@ export default function SearchPage() {
     }
   }, [initialKeyword]);
 
+  // 自动搜索：用户输入防抖后自动触发搜索，无需手动点击按钮
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (debouncedKeyword.trim() && debouncedKeyword !== initialKeyword) {
+      setSearchParams({ q: debouncedKeyword }, { replace: true });
+      setPage(0);
+      setSearched(true);
+    }
+  }, [debouncedKeyword, initialKeyword, setSearchParams]);
+
+  const handleSubmit = (e: React.FormEvent) => {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (keyword.trim()) {

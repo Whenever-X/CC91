@@ -34,6 +34,7 @@ export default function NotificationBell() {
     mutationFn: markAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.lists() });
     },
   });
 
