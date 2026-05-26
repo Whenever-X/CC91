@@ -1,7 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState, useEffect, type FormEvent } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { searchPosts } from '../api/post';
 import { queryKeys } from '../lib/queryKeys';
@@ -57,7 +55,6 @@ export default function SearchPage() {
     }
   }, [debouncedKeyword, initialKeyword, setSearchParams]);
 
-  const handleSubmit = (e: React.FormEvent) => {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (keyword.trim()) {
