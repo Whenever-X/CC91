@@ -6,7 +6,6 @@ import {
   type Post, type AdminComment
 } from '../../api/admin';
 import ErrorMessage from '../../components/ErrorMessage';
-import { adminGetPosts, adminUpdatePostStatus, adminDeletePost } from '../../api/admin';
 import { queryKeys } from '../../lib/queryKeys';
 
 type TabType = 'posts' | 'comments';
