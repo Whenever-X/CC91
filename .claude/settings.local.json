@@ -64,7 +64,8 @@
       "Bash(mv context/*.test.tsx __tests__/context/)",
       "Bash(find . -name \"*.tsx\" -exec sed -i \"s|'\\\\.\\\\./api/|'../../api/|g; s|'\\\\.\\\\./context/|'../../context/|g; s|'\\\\.\\\\./components/|'../../components/|g; s|'\\\\.\\\\./hooks/|'../../hooks/|g\" {} +)",
       "Bash(gh pr create --title 'feat: 修复注册流程、完善帖子功能、新增管理后台模块' --body ':*)",
-      "Bash(xxd \"D:/aToys/LargeScale/frontend/src/pages/PostListPage.tsx\")"
+      "Bash(xxd \"D:/aToys/LargeScale/frontend/src/pages/PostListPage.tsx\")",
+      "Bash(gh pr create --base develop --title 'fix: 修复前端重复导入导致Vite解析失败' --body ' *)"
     ]
   }
 }
