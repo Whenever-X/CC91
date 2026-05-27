@@ -1,7 +1,9 @@
 package com.cc91.controller;
 
+import com.cc91.entity.Category;
 import com.cc91.entity.Post;
 import com.cc91.entity.User;
+import com.cc91.repository.CategoryRepository;
 import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +52,9 @@ class PostControllerTest {
     @Autowired
     private PostRepository postRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
@@ -62,6 +67,7 @@ class PostControllerTest {
     @Transactional
     void cleanDatabase() {
         postRepository.deleteAll();
+        categoryRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -317,5 +323,85 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.number").value(0))
                 .andExpect(jsonPath("$.size").value(10));
+    }
+
+    // ==================== GET /api/posts/by-category/{categoryId} 测试 ====================
+
+    @Test
+    @WithMockUser(username = "author")
+    @Transactional
+    void getPostsByCategory_CategoryWithPosts_ReturnsFilteredPosts() throws Exception {
+        // Arrange
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        author.setRole("USER");
+        userRepository.saveAndFlush(author);
+
+        Category category = new Category("技术交流", "讨论技术相关话题", 0);
+        categoryRepository.saveAndFlush(category);
+
+        Post post = new Post("分类下的帖子", "内容", author.getId());
+        post.setCategoryId(category.getId());
+        post.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(post);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/posts/by-category/{categoryId}", category.getId())
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value("分类下的帖子"));
+    }
+
+    @Test
+    @WithMockUser(username = "author")
+    void getPostsByCategory_NonExistentCategory_Returns404() throws Exception {
+        mockMvc.perform(get("/api/posts/by-category/{categoryId}", 99999L)
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isNotFound());
+    }
+
+    // ==================== GET /api/posts/search 测试 ====================
+
+    @Test
+    @WithMockUser(username = "author")
+    @Transactional
+    void searchPosts_MatchingKeyword_ReturnsResults() throws Exception {
+        // Arrange
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        author.setRole("USER");
+        userRepository.saveAndFlush(author);
+
+        Post post1 = new Post("Spring Boot 教程", "Spring Boot 入门指南", author.getId());
+        post1.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(post1);
+
+        Post post2 = new Post("React 学习笔记", "React 前端开发", author.getId());
+        post2.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(post2);
+
+        // Act & Assert - search for "Spring"
+        mockMvc.perform(get("/api/posts/search")
+                .param("keyword", "Spring")
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value("Spring Boot 教程"));
+    }
+
+    @Test
+    @WithMockUser(username = "author")
+    void searchPosts_NoMatch_ReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/posts/search")
+                .param("keyword", "不存在的关键词")
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(0));
     }
 }
