@@ -61,12 +61,6 @@ export default function LoginPage() {
           <i className="fa fa-sign-in"></i> User Login
         </div>
 
-        {error && (
-          <div className="cc98-error-box" style={{ margin: '1.25rem 1.5rem 0 1.5rem' }}>
-            <i className="fa fa-exclamation-circle"></i> {error}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="cc98-auth-form">
           {/* Username */}
           <div className="cc98-form-group">

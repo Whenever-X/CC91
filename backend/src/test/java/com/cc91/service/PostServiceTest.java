@@ -3,10 +3,12 @@ package com.cc91.service;
 import com.cc91.dto.CreatePostRequest;
 import com.cc91.dto.PostResponse;
 import com.cc91.dto.UpdatePostRequest;
+import com.cc91.entity.Category;
 import com.cc91.entity.Post;
 import com.cc91.entity.User;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.exception.UnauthorizedException;
+import com.cc91.repository.CategoryRepository;
 import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -42,6 +44,9 @@ class PostServiceTest {
     private UserRepository userRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -50,6 +55,7 @@ class PostServiceTest {
     @BeforeEach
     void cleanDatabase() {
         postRepository.deleteAll();
+        categoryRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -417,5 +423,137 @@ class PostServiceTest {
         // Assert: 验证第二页
         assertEquals(5, page2.getContent().size());
         assertNotEquals(page1.getContent().get(0).getId(), page2.getContent().get(0).getId());
+    }
+
+    // ==================== getPostsByCategory 测试 ====================
+
+    @Test
+    @Transactional
+    void getPostsByCategory_ValidCategory_ReturnsPosts() {
+        // Arrange
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        author.setRole("USER");
+        userRepository.saveAndFlush(author);
+
+        Category category = new Category("技术交流", "讨论技术相关话题", 0);
+        categoryRepository.saveAndFlush(category);
+
+        Post post = new Post("分类帖子", "内容", author.getId());
+        post.setCategoryId(category.getId());
+        post.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(post);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        Page<PostResponse> result = postService.getPostsByCategory(category.getId(), 0, 10);
+
+        // Assert
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("分类帖子", result.getContent().get(0).getTitle());
+    }
+
+    @Test
+    void getPostsByCategory_NonExistentCategory_ThrowsResourceNotFoundException() {
+        assertThrows(ResourceNotFoundException.class, () -> {
+            postService.getPostsByCategory(99999L, 0, 10);
+        });
+    }
+
+    @Test
+    @Transactional
+    void getPostsByCategory_OnlyReturnsPublishedPosts() {
+        // Arrange
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        author.setRole("USER");
+        userRepository.saveAndFlush(author);
+
+        Category category = new Category("技术交流", "讨论技术相关话题", 0);
+        categoryRepository.saveAndFlush(category);
+
+        Post publishedPost = new Post("已发布帖子", "内容", author.getId());
+        publishedPost.setCategoryId(category.getId());
+        publishedPost.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(publishedPost);
+
+        Post draftPost = new Post("草稿帖子", "内容", author.getId());
+        draftPost.setCategoryId(category.getId());
+        draftPost.setStatus("DRAFT");
+        postRepository.saveAndFlush(draftPost);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        Page<PostResponse> result = postService.getPostsByCategory(category.getId(), 0, 10);
+
+        // Assert
+        assertEquals(1, result.getTotalElements());
+        assertEquals("已发布帖子", result.getContent().get(0).getTitle());
+    }
+
+    // ==================== searchPosts 测试 ====================
+
+    @Test
+    @Transactional
+    void searchPosts_MatchingKeyword_ReturnsResults() {
+        // Arrange
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        author.setRole("USER");
+        userRepository.saveAndFlush(author);
+
+        Post post1 = new Post("Spring Boot 教程", "Spring Boot 入门指南", author.getId());
+        post1.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(post1);
+
+        Post post2 = new Post("React 学习笔记", "React 前端开发", author.getId());
+        post2.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(post2);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        Page<PostResponse> result = postService.searchPosts("Spring", 0, 10);
+
+        // Assert
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Spring Boot 教程", result.getContent().get(0).getTitle());
+    }
+
+    @Test
+    void searchPosts_EmptyKeyword_ReturnsEmptyPage() {
+        // Act
+        Page<PostResponse> result = postService.searchPosts("", 0, 10);
+
+        // Assert
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+    }
+
+    @Test
+    @Transactional
+    void searchPosts_OnlySearchesPublishedPosts() {
+        // Arrange
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        author.setRole("USER");
+        userRepository.saveAndFlush(author);
+
+        Post publishedPost = new Post("Spring 发布帖", "Spring 内容", author.getId());
+        publishedPost.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(publishedPost);
+
+        Post draftPost = new Post("Spring 草稿", "Spring 草稿内容", author.getId());
+        draftPost.setStatus("DRAFT");
+        postRepository.saveAndFlush(draftPost);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        Page<PostResponse> result = postService.searchPosts("Spring", 0, 10);
+
+        // Assert
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Spring 发布帖", result.getContent().get(0).getTitle());
     }
 }

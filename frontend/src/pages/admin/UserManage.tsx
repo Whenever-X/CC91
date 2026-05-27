@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminGetUsers, adminBanUser, adminUnbanUser } from '../../api/admin';
+import { adminGetUsers, adminBanUser, adminUnbanUser, adminUpdateUserRole } from '../../api/admin';
+import { useAuth } from '../../context/AuthContext';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -8,6 +9,7 @@ import { queryKeys } from '../../lib/queryKeys';
  */
 export default function UserManage() {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -24,9 +26,11 @@ export default function UserManage() {
       adminBanUser(userId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
+      setError('');
       setSuccess(`用户「${variables.username}」已封禁`);
     },
     onError: (err: any) => {
+      setSuccess('');
       setError(err.response?.data?.message || '封禁失败');
     },
   });
@@ -37,10 +41,27 @@ export default function UserManage() {
       adminUnbanUser(userId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
+      setError('');
       setSuccess(`用户「${variables.username}」已解封`);
     },
     onError: (err: any) => {
+      setSuccess('');
       setError(err.response?.data?.message || '解封失败');
+    },
+  });
+
+  // 修改角色的 mutation
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: number; role: string; username: string }) =>
+      adminUpdateUserRole(userId, role),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
+      setError('');
+      setSuccess(`用户「${variables.username}」角色已修改为 ${variables.role === 'ADMIN' ? '管理员' : '普通用户'}`);
+    },
+    onError: (err: any) => {
+      setSuccess('');
+      setError(err.response?.data?.message || '修改角色失败');
     },
   });
 
@@ -51,6 +72,17 @@ export default function UserManage() {
 
   const handleUnban = (userId: number, username: string) => {
     unbanMutation.mutate({ userId, username });
+  };
+
+  const handleRoleChange = (userId: number, username: string, newRole: string, currentRole: string) => {
+    if (newRole === currentRole) return;
+    if (username === currentUser?.username) {
+      if (!confirm('警告：修改自己的角色可能导致您失去管理权限，确定继续吗？')) return;
+    } else {
+      const label = newRole === 'ADMIN' ? '管理员' : '普通用户';
+      if (!confirm(`确定要将用户「${username}」的角色修改为「${label}」吗？`)) return;
+    }
+    roleMutation.mutate({ userId, role: newRole, username });
   };
 
   return (
@@ -101,9 +133,23 @@ export default function UserManage() {
                     <td style={{ fontWeight: '500' }}>{user.username}</td>
                     <td className="hide-mobile">{user.email}</td>
                     <td>
-                      <span className={`badge ${user.role === 'ADMIN' ? 'badge-danger' : 'badge-muted'}`}>
-                        {user.role === 'ADMIN' ? '管理员' : '普通用户'}
-                      </span>
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, user.username, e.target.value, user.role)}
+                        disabled={roleMutation.isPending}
+                        style={{
+                          padding: '0.2rem 0.4rem',
+                          borderRadius: '4px',
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-bg)',
+                          color: 'var(--color-text)',
+                          fontSize: '0.85rem',
+                          cursor: roleMutation.isPending ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <option value="USER">普通用户</option>
+                        <option value="ADMIN">管理员</option>
+                      </select>
                     </td>
                     <td>
                       {user.isLocked ? (

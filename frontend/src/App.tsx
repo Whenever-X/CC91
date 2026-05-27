@@ -15,6 +15,7 @@ import MyCommentsPage from './pages/MyCommentsPage';
 import MyDraftsPage from './pages/MyDraftsPage';
 import ProfilePage from './pages/ProfilePage';
 import ProfileEditPage from './pages/ProfileEditPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import PostListPage from './pages/PostListPage';
 import PostDetailPage from './pages/PostDetailPage';
 import CreatePostPage from './pages/CreatePostPage';
@@ -94,6 +95,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyDraftsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="dashboard/password"
+                element={
+                  <ProtectedRoute>
+                    <ChangePasswordPage />
                   </ProtectedRoute>
                 }
               />

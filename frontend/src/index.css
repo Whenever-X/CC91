@@ -712,3 +712,128 @@ code {
     padding: 1rem;
   }
 }
+
+/* Shared editor form styles (used by ProfileEditPage, ChangePasswordPage, etc.) */
+.cc98-editor-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--cc98-radius);
+  box-shadow: var(--cc98-shadow);
+  overflow: hidden;
+}
+
+.cc98-editor-title-bar {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.85rem 1.5rem;
+  font-weight: bold;
+  font-size: 1.05rem;
+  border-bottom: 2px solid var(--accent-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-dark .cc98-editor-title-bar {
+  border-bottom-color: var(--border-color);
+}
+
+.cc98-error-box {
+  background-color: rgba(251, 97, 101, 0.1);
+  color: #fb6165;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--cc98-radius);
+  border: 1px solid rgba(251, 97, 101, 0.2);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cc98-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.cc98-form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  font-size: 0.92rem;
+  color: var(--text-main);
+}
+
+.cc98-form-group label .count-hint {
+  font-weight: normal;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin-left: 0.5rem;
+}
+
+.cc98-form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  color: var(--text-main);
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: var(--cc98-transition);
+}
+
+.cc98-form-control:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(84, 110, 122, 0.15);
+}
+
+.cc98-editor-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cc98-btn {
+  padding: 0.7rem 1.5rem;
+  font-size: 0.92rem;
+  font-weight: bold;
+  border-radius: var(--cc98-radius-pill);
+  cursor: pointer;
+  transition: var(--cc98-transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: none;
+}
+
+.btn-publish {
+  background-color: var(--primary-color);
+  color: white;
+  flex: 1;
+  min-width: 150px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-publish:hover:not(:disabled) {
+  background-color: var(--accent-color);
+  color: #333;
+  transform: translateY(-1px);
+}
+
+.btn-cancel {
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 0.7rem 2rem;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background-color: var(--quote-bg);
+  color: var(--text-main);
+}
+
+.cc98-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
