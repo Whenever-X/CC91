@@ -112,6 +112,12 @@ export default function DashboardPage() {
           <div className="quick-desc">编辑个人信息与头像</div>
         </div>
 
+        <div className="cc98-quick-card" onClick={() => navigate('/dashboard/password')}>
+          <div className="quick-icon"><i className="fa fa-lock"></i></div>
+          <div className="quick-title">修改密码</div>
+          <div className="quick-desc">更新登录密码</div>
+        </div>
+
         {user?.role === 'ADMIN' && (
           <div className="cc98-quick-card admin-card" onClick={() => navigate('/admin')}>
             <div className="quick-icon"><i className="fa fa-cogs"></i></div>
