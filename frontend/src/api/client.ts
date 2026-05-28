@@ -72,7 +72,14 @@ client.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     // Detect server offline / connection error and fallback to mock mode
+    // Retry once after a short delay to avoid false positives from CORS preflight timing
     if ((error.code === 'ERR_NETWORK' || !error.response) && localStorage.getItem('use_mock') !== 'true') {
+      const config = error.config as InternalAxiosRequestConfig & { _networkRetry?: boolean };
+      if (!config._networkRetry) {
+        config._networkRetry = true;
+        await new Promise((r) => setTimeout(r, 500));
+        return client(config);
+      }
       localStorage.setItem('use_mock', 'true');
       window.dispatchEvent(new Event('mock-mode-changed'));
       window.location.reload();

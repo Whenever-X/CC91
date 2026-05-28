@@ -258,6 +258,9 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
 
       responseData = { username, email };
     }
+    else if (url.match(/^\/auth\/resend-verification/)) {
+      responseData = { message: 'Verification code sent', data: null };
+    }
     else if (url.match(/^\/auth\/forgot-password/)) {
       responseData = { message: '验证码已发送至您的邮箱！' };
     }

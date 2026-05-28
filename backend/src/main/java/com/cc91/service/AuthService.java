@@ -20,6 +20,7 @@ import com.cc91.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -64,6 +65,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final ApplicationEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${account.lock.max-attempts:5}")
@@ -81,13 +83,15 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            AuthenticationManager authenticationManager) {
+            AuthenticationManager authenticationManager,
+            ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.verificationCodeRepository = verificationCodeRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -114,7 +118,24 @@ public class AuthService {
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(VERIFICATION_CODE_EXPIRES_IN_SECONDS);
         verificationCodeRepository.save(new VerificationCode(request.getEmail(), code, REGISTER_CODE_TYPE, expiresAt));
 
-        logger.info("Register verification code for {}: {}, expiresAt={}", request.getEmail(), code, expiresAt);
+        eventPublisher.publishEvent(new EmailEvent(this, request.getEmail(), code, VERIFICATION_CODE_EXPIRES_IN_SECONDS, EmailEvent.EmailType.VERIFICATION));
+        return new RegisterResponse(VERIFICATION_CODE_SENT, VERIFICATION_CODE_EXPIRES_IN_SECONDS);
+    }
+
+    @Transactional
+    public RegisterResponse resendVerification(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException(USER_NOT_FOUND));
+
+        if (!Boolean.TRUE.equals(user.getIsLocked()) || user.getLockUntil() != null) {
+            throw new BadRequestException("Account already verified or not in verification state");
+        }
+
+        String code = generateVerificationCode();
+        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(VERIFICATION_CODE_EXPIRES_IN_SECONDS);
+        verificationCodeRepository.save(new VerificationCode(email, code, REGISTER_CODE_TYPE, expiresAt));
+
+        eventPublisher.publishEvent(new EmailEvent(this, email, code, VERIFICATION_CODE_EXPIRES_IN_SECONDS, EmailEvent.EmailType.VERIFICATION));
         return new RegisterResponse(VERIFICATION_CODE_SENT, VERIFICATION_CODE_EXPIRES_IN_SECONDS);
     }
 
@@ -309,7 +330,7 @@ public class AuthService {
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(VERIFICATION_CODE_EXPIRES_IN_SECONDS);
         verificationCodeRepository.save(new VerificationCode(email, code, PASSWORD_RESET_CODE_TYPE, expiresAt));
 
-        logger.info("Password reset verification code for {}: {}, expiresAt={}", email, code, expiresAt);
+        eventPublisher.publishEvent(new EmailEvent(this, email, code, VERIFICATION_CODE_EXPIRES_IN_SECONDS, EmailEvent.EmailType.PASSWORD_RESET));
     }
 
     @Transactional
