@@ -90,6 +90,7 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/posts", "/api/posts/{id}", "/api/posts/search").permitAll()
                         .requestMatchers("GET", "/api/posts/*/comments").permitAll()
                         .requestMatchers("GET", "/api/categories").permitAll()
+                        .requestMatchers("GET", "/api/announcements", "/api/announcements/{id}").permitAll()
                         // Admin APIs are protected by the role stored on the User record.
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
