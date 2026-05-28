@@ -89,3 +89,5 @@ temp/
 frontend1/
 .playwright-mcp/
 plan/
+# Local Claude settings
+.claude/settings.local.json
