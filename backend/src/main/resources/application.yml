@@ -62,3 +62,8 @@ account:
 app:
   dev-data:
     enabled: false
+
+  mail:
+    # Set to true to print verification codes to console instead of sending email
+    # Useful for local development when no SMTP is configured
+    console-log-only: true
