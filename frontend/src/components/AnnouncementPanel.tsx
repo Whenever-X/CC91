@@ -1,10 +1,5 @@
-interface Announcement {
-  id: number;
-  title: string;
-  date: string;
-  isRed?: boolean;
-  isBold?: boolean;
-}
+import { useNavigate } from 'react-router-dom';
+import type { Announcement } from '../api/announcement';
 
 interface AnnouncementPanelProps {
   announcements: Announcement[];
@@ -14,6 +9,8 @@ interface AnnouncementPanelProps {
  * CC98 经典公告栏
  */
 export default function AnnouncementPanel({ announcements }: AnnouncementPanelProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="cc98-ann-container">
       {/* 外部大标题 */}
@@ -30,12 +27,20 @@ export default function AnnouncementPanel({ announcements }: AnnouncementPanelPr
           ) : (
             announcements.map((ann) => (
               <div key={ann.id} className="cc98-announcement-item-classic">
-                <a 
-                  href={`#announcement-${ann.id}`}
-                  onClick={(e) => { e.preventDefault(); alert(`公告详情：\n${ann.title}`); }}
-                  className={`cc98-ann-link-classic ${ann.isRed ? 'red' : ''} ${ann.isBold ? 'bold' : ''}`}
+                <a
+                  href={`/announcements/${ann.id}`}
+                  onClick={(e) => { e.preventDefault(); navigate(`/announcements/${ann.id}`); }}
+                  className={`cc98-ann-link-classic ${ann.isPinned ? 'bold' : ''}`}
                 >
-                  <span className="cc98-ann-date-classic">[{ann.date}]</span>
+                  {ann.isPinned && (
+                    <span style={{
+                      color: 'var(--cc98-alt-color-a)',
+                      fontWeight: 'bold',
+                      marginRight: '0.25rem',
+                      fontSize: '0.8rem',
+                    }}>[置顶]</span>
+                  )}
+                  <span className="cc98-ann-date-classic">[{new Date(ann.createdAt).toLocaleDateString('zh-CN')}]</span>
                   <span>{ann.title}</span>
                 </a>
               </div>
@@ -50,13 +55,13 @@ export default function AnnouncementPanel({ announcements }: AnnouncementPanelPr
           margin-bottom: 2rem;
           display: flex;
           flex-direction: column;
-          align-items: flex-start; /* 外部标题靠左对齐 */
+          align-items: flex-start;
         }
 
         .cc98-ann-title-external {
           font-size: 1.3rem;
           font-weight: bold;
-          color: var(--cc98-alt-color-a); /* 绑定主题色 A */
+          color: var(--cc98-alt-color-a);
           display: flex;
           align-items: center;
           margin-bottom: 0.85rem;
@@ -64,8 +69,8 @@ export default function AnnouncementPanel({ announcements }: AnnouncementPanelPr
         }
 
         .cc98-announcement-box-classic {
-          border: 1px solid var(--border-color); /* 绑定通用卡片微弱边框 */
-          border-top: 8px solid var(--cc98-alt-color-a); /* 顶部粗边框绑定主题色 A */
+          border: 1px solid var(--border-color);
+          border-top: 8px solid var(--cc98-alt-color-a);
           border-radius: 4px;
           background-color: var(--card-bg);
           overflow: hidden;
@@ -110,16 +115,12 @@ export default function AnnouncementPanel({ announcements }: AnnouncementPanelPr
           font-weight: normal;
         }
 
-        .cc98-ann-link-classic.bold { 
-          font-weight: bold; 
+        .cc98-ann-link-classic.bold {
+          font-weight: bold;
         }
-        
-        .cc98-ann-link-classic.red { 
-          color: #fb6165; 
-        }
-        
-        .cc98-ann-link-classic:hover { 
-          text-decoration: underline; 
+
+        .cc98-ann-link-classic:hover {
+          text-decoration: underline;
           color: var(--link-color);
         }
 

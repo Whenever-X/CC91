@@ -30,6 +30,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CategoryManage from './pages/admin/CategoryManage';
 import ContentModeration from './pages/admin/ContentModeration';
 import UserManage from './pages/admin/UserManage';
+import AnnouncementManage from './pages/admin/AnnouncementManage';
+import AnnouncementDetailPage from './pages/AnnouncementDetailPage';
 import { queryClient } from './lib/queryClient';
 
 function AdminRoutes() {
@@ -114,6 +116,10 @@ function App() {
               {/* 帖子相关路由 */}
               <Route path="posts" element={<PostListPage />} />
               <Route path="posts/:id" element={<PostDetailPage />} />
+
+              {/* 公告详情路由 */}
+              <Route path="announcements/:id" element={<AnnouncementDetailPage />} />
+
               <Route
                 path="posts/new"
                 element={
@@ -156,6 +162,7 @@ function App() {
               <Route path="categories" element={<CategoryManage />} />
               <Route path="content" element={<ContentModeration />} />
               <Route path="users" element={<UserManage />} />
+              <Route path="announcements" element={<AnnouncementManage />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFoundPage />} />

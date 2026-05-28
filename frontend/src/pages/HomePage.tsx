@@ -2,22 +2,23 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '../api/category';
 import { getPostList } from '../api/post';
+import { getAnnouncements } from '../api/announcement';
 import { queryKeys } from '../lib/queryKeys';
 import BoardCard from '../components/BoardCard';
 import TopicTable from '../components/TopicTable';
 import AnnouncementPanel from '../components/AnnouncementPanel';
-
-const mockAnnouncements = [
-  { id: 1, title: 'CC91 论坛经典 CC98 视觉风格美化重构上线公告', date: '2026-05-19', isRed: true, isBold: true },
-  { id: 2, title: '关于规范社区讨论、禁止灌水与文明发言的通知', date: '2026-05-18', isBold: true },
-  { id: 3, title: '推荐使用主流现代浏览器（Chrome/Edge/Safari）以获得最佳体验', date: '2026-05-17' },
-];
 
 /**
  * CC98 风格经典社区首页
  */
 export default function HomePage() {
   const navigate = useNavigate();
+
+  // 获取公告列表
+  const { data: announcements = [] } = useQuery({
+    queryKey: queryKeys.announcements.list(),
+    queryFn: getAnnouncements,
+  });
 
   // 获取版块列表
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
@@ -61,7 +62,7 @@ export default function HomePage() {
     <div className="cc98-home-page container">
 
       {/* 1. 全站公告 */}
-      <AnnouncementPanel announcements={mockAnnouncements} />
+      <AnnouncementPanel announcements={announcements} />
 
       {/* 2. 双栏布局 (左栏版块 & 帖子列表，右栏热门) */}
       <div className="cc98-home-grid">
