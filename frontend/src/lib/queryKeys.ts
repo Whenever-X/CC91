@@ -56,6 +56,15 @@ export const queryKeys = {
     byPost: (postId: number) => [...queryKeys.comments.all, 'post', postId] as const,
   },
 
+  // 公告相关
+  announcements: {
+    all: ['announcements'] as const,
+    lists: () => [...queryKeys.announcements.all, 'list'] as const,
+    list: () => [...queryKeys.announcements.lists()] as const,
+    details: () => [...queryKeys.announcements.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.announcements.details(), id] as const,
+  },
+
   // 管理员相关
   admin: {
     posts: (status?: string) => status

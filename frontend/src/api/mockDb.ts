@@ -5,6 +5,7 @@ import type { Comment } from './comment';
 import type { UserProfile, MyComment } from './user';
 import type { AdminUser } from './admin';
 import type { Notification } from './notification';
+import type { Announcement } from './announcement';
 
 const STORAGE_KEY = 'cc91_mock_db';
 
@@ -13,6 +14,7 @@ interface MockDbState {
   posts: Post[];
   comments: Comment[]; // stored flat
   notifications: Notification[];
+  announcements: Announcement[];
   users: AdminUser[];
   profiles: { [username: string]: UserProfile };
   lastIds: {
@@ -20,6 +22,7 @@ interface MockDbState {
     post: number;
     comment: number;
     notification: number;
+    announcement: number;
     user: number;
   };
 }
@@ -68,6 +71,11 @@ const INITIAL_STATE: MockDbState = {
     { id: 1, userId: 2, type: 'COMMENT', title: '您的帖子有新回复', content: 'admin 在帖子《关于CC91 BBS论坛系统正式上线运行的公告》中回复了您。', relatedId: 1, isRead: false, createdAt: '2026-05-18T08:45:00.000Z' },
     { id: 2, userId: 2, type: 'SYSTEM', title: '注册成功通知', content: '欢迎加入 CC91 BBS，您的账户已成功创建！', isRead: true, createdAt: '2026-05-18T07:00:00.000Z' }
   ],
+  announcements: [
+    { id: 1, title: 'CC91 论坛经典 CC98 视觉风格美化重构上线公告', content: 'CC91 论坛已完成经典 CC98 视觉风格的全面美化重构，新版界面在保留经典 BBS 布局的基础上，引入了响应式设计与现代化交互体验。', authorId: 1, authorUsername: 'admin', isPinned: true, createdAt: '2026-05-19T08:00:00.000Z', updatedAt: '2026-05-19T08:00:00.000Z' },
+    { id: 2, title: '关于规范社区讨论、禁止灌水与文明发言的通知', content: '为营造良好的社区氛围，CC91 论坛现就发言规范作如下通知：\n1. 禁止在非灌水版块发布无意义内容\n2. 禁止人身攻击、侮辱性语言及任何形式的歧视言论\n3. 讨论应围绕主题展开，不得恶意歪楼', authorId: 1, authorUsername: 'admin', isPinned: false, createdAt: '2026-05-18T08:00:00.000Z', updatedAt: '2026-05-18T08:00:00.000Z' },
+    { id: 3, title: '推荐使用主流现代浏览器（Chrome/Edge/Safari）以获得最佳体验', content: 'CC91 论坛采用现代化前端技术构建，为确保最佳浏览体验，推荐使用 Chrome、Edge、Safari 或 Firefox 的最新版本。不建议使用 IE 浏览器。', authorId: 1, authorUsername: 'admin', isPinned: false, createdAt: '2026-05-17T08:00:00.000Z', updatedAt: '2026-05-17T08:00:00.000Z' },
+  ],
   users: [
     { id: 1, username: 'admin', email: 'admin@cc98.org', role: 'ADMIN', isLocked: false, createdAt: '2026-05-18T06:00:00.000Z' },
     { id: 2, username: 'user', email: 'user@cc98.org', role: 'USER', isLocked: false, createdAt: '2026-05-18T07:00:00.000Z' },
@@ -83,6 +91,7 @@ const INITIAL_STATE: MockDbState = {
     post: 8,
     comment: 9,
     notification: 2,
+    announcement: 3,
     user: 3
   }
 };
@@ -841,6 +850,74 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         saveDbState(state);
       }
       responseData = null;
+    }
+
+    // ============ Announcement API ============
+    else if (url === '/announcements' && method === 'GET') {
+      responseData = [...state.announcements].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+    else if (url.match(/^\/announcements\/\d+$/) && method === 'GET') {
+      const annId = parseInt(url.split('/').pop() || '0');
+      const ann = state.announcements.find(a => a.id === annId);
+      if (!ann) {
+        status = 404;
+        throw new Error('公告不存在！');
+      }
+      responseData = ann;
+    }
+    else if (url === '/admin/announcements' && method === 'POST') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      state.lastIds.announcement++;
+      const newAnn: Announcement = {
+        id: state.lastIds.announcement,
+        title: data.title,
+        content: data.content,
+        authorId: currentUser.id,
+        authorUsername: currentUser.username,
+        isPinned: data.isPinned || false,
+        createdAt: getNowString(),
+        updatedAt: getNowString()
+      };
+      state.announcements.push(newAnn);
+      saveDbState(state);
+      responseData = { success: true, message: '公告创建成功', data: newAnn };
+    }
+    else if (url.match(/^\/admin\/announcements\/\d+$/) && method === 'PUT') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      const annId = parseInt(url.split('/').pop() || '0');
+      const idx = state.announcements.findIndex(a => a.id === annId);
+      if (idx === -1) {
+        status = 404;
+        throw new Error('公告不存在！');
+      }
+      state.announcements[idx] = {
+        ...state.announcements[idx],
+        title: data.title ?? state.announcements[idx].title,
+        content: data.content ?? state.announcements[idx].content,
+        isPinned: data.isPinned ?? state.announcements[idx].isPinned,
+        updatedAt: getNowString()
+      };
+      saveDbState(state);
+      responseData = { success: true, message: '公告更新成功', data: state.announcements[idx] };
+    }
+    else if (url.match(/^\/admin\/announcements\/\d+$/) && method === 'DELETE') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      const annId = parseInt(url.split('/').pop() || '0');
+      state.announcements = state.announcements.filter(a => a.id !== annId);
+      saveDbState(state);
+      responseData = { success: true, message: '公告删除成功' };
     }
 
     // Default error for unhandled Mock paths

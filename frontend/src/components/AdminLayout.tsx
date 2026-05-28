@@ -17,6 +17,7 @@ export default function AdminLayout() {
     { to: '/admin/categories', label: '版块管理', icon: '\u{1F4C1}' },
     { to: '/admin/content', label: '内容审核', icon: '\u{1F4DD}' },
     { to: '/admin/users', label: '用户管理', icon: '\u{1F465}' },
+    { to: '/admin/announcements', label: '公告管理', icon: '\u{1F4E2}' },
   ];
 
   return (
