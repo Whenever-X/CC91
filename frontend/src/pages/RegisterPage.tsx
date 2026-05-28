@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import client from '../api/client';
+import { register, verifyEmail, resendVerification } from '../api/auth';
 
 /**
  * CC98 风格用户注册页面组件
@@ -31,11 +31,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await client.post('/auth/register', {
-        username,
-        email,
-        password,
-      });
+      await register(username, email, password);
 
       setSuccess('验证码已发送至邮箱，请查收');
       setStep('verify');
@@ -54,10 +50,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await client.post('/auth/verify-email', {
-        email,
-        code: verificationCode,
-      });
+      await verifyEmail(email, verificationCode);
 
       alert('邮箱验证成功！请登录');
       navigate('/login');
@@ -76,11 +69,7 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      await client.post('/auth/register', {
-        username,
-        email,
-        password,
-      });
+      await resendVerification(email);
 
       setSuccess('验证码已重新发送');
       startCountdown();

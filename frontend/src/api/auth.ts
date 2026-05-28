@@ -62,6 +62,29 @@ export async function register(username: string, email: string, password: string
 }
 
 /**
+ * Verify email with code sent during registration
+ * POST /api/auth/verify-email
+ */
+export async function verifyEmail(email: string, code: string): Promise<ApiResponse<void>> {
+  const response = await client.post<ApiResponse<void>>('/auth/verify-email', {
+    email,
+    code,
+  });
+  return response.data;
+}
+
+/**
+ * Resend verification code for an unverified account
+ * POST /api/auth/resend-verification
+ */
+export async function resendVerification(email: string): Promise<RegisterResponse> {
+  const response = await client.post<RegisterResponse>('/auth/resend-verification', {
+    email,
+  });
+  return response.data;
+}
+
+/**
  * Send password reset verification code
  * POST /api/auth/forgot-password
  */
