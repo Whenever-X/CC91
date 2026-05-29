@@ -33,6 +33,11 @@ spring:
     locations: classpath:db/migration
     encoding: UTF-8
 
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+
   mail:
     host: smtp.qq.com
     port: 587
@@ -76,3 +81,6 @@ app:
     # Set to true to print verification codes to console instead of sending email
     # Useful for local development when no SMTP is configured
     console-log-only: false
+
+  upload:
+    avatar-dir: ${AVATAR_DIR:uploads/avatars}

@@ -83,7 +83,7 @@ public class AnnouncementService {
      */
     @Transactional
     public AnnouncementDTO update(Long id, UpdateAnnouncementRequest request) {
-        Announcement announcement = announcementRepository.findById(id)
+        Announcement announcement = announcementRepository.findByIdWithAuthor(id)
                 .orElseThrow(() -> new ResourceNotFoundException("公告不存在"));
 
         if (request.getTitle() != null) {

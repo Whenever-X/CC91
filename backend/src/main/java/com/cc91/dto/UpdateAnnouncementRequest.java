@@ -1,18 +1,15 @@
 package com.cc91.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * 更新公告请求 DTO
+ * 更新公告请求 DTO（支持部分更新）
  */
 public class UpdateAnnouncementRequest {
 
-    @NotBlank(message = "公告标题不能为空")
     @Size(max = 200, message = "公告标题最多200个字符")
     private String title;
 
-    @NotBlank(message = "公告内容不能为空")
     private String content;
 
     private Boolean isPinned;

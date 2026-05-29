@@ -6,6 +6,7 @@ import studentAvatar from '../assets/cc98_avatar_student.png';
 interface PostCardProps {
   id: number;
   authorUsername: string;
+  authorAvatarUrl?: string | null;
   floor: number | string;
   content: string;
   createdAt: string;
@@ -34,6 +35,7 @@ function hashCode(str: string): number {
 export default function PostCard({
   id,
   authorUsername,
+  authorAvatarUrl,
   floor,
   content,
   createdAt,
@@ -52,7 +54,7 @@ export default function PostCard({
   const fanCount = hash % 95;
   const reputation = (hash % 45) + 3;
   const gender = hash % 2 === 0 ? 'male' : 'female';
-  const avatar = hash % 3 === 0 ? studentAvatar : catAvatar;
+  const avatar = authorAvatarUrl || (hash % 3 === 0 ? studentAvatar : catAvatar);
   const signature = hash % 2 === 0 ? '行百里者半九十，心之所向素履以往。' : '浙大求是人，纵横天地间！ 🌟';
 
   // Support local likes/dislikes since the real backend doesn't save them

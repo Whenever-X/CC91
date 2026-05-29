@@ -6,11 +6,13 @@ import com.cc91.dto.UserCommentResponse;
 import com.cc91.entity.Comment;
 import com.cc91.entity.Post;
 import com.cc91.entity.User;
+import com.cc91.entity.UserProfile;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.CommentRepository;
 import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
+import com.cc91.repository.UserProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,15 +32,18 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
     private final NotificationService notificationService;
 
     public CommentService(CommentRepository commentRepository,
                          PostRepository postRepository,
                          UserRepository userRepository,
+                         UserProfileRepository userProfileRepository,
                          NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
         this.notificationService = notificationService;
     }
 
@@ -160,8 +165,11 @@ public class CommentService {
         Map<Long, String> userMap = userRepository.findAllById(authorIds).stream()
                 .collect(Collectors.toMap(User::getId, User::getUsername));
 
+        // 批量查询用户头像
+        Map<Long, String> avatarMap = buildAvatarMap(authorIds);
+
         // 构建树形结构
-        return buildCommentTree(comments, userMap);
+        return buildCommentTree(comments, userMap, avatarMap);
     }
 
         /**
@@ -200,10 +208,15 @@ public class CommentService {
     /**
      * 构建评论树形结构
      */
-    private List<CommentResponse> buildCommentTree(List<Comment> comments, Map<Long, String> userMap) {
+    private List<CommentResponse> buildCommentTree(List<Comment> comments, Map<Long, String> userMap, Map<Long, String> avatarMap) {
         // 转换为 CommentResponse
         List<CommentResponse> responses = comments.stream()
-                .map(comment -> toCommentResponse(comment, userMap.get(comment.getAuthorId())))
+                .map(comment -> {
+                    CommentResponse response = toCommentResponse(comment, userMap.get(comment.getAuthorId()));
+                    String avatar = avatarMap.get(comment.getAuthorId());
+                    response.setAuthorAvatarUrl(normalizeAvatarUrl(avatar));
+                    return response;
+                })
                 .collect(Collectors.toList());
 
         // 构建 ID 到 Response 的映射
@@ -234,7 +247,7 @@ public class CommentService {
      * 转换为 CommentResponse
      */
     private CommentResponse toCommentResponse(Comment comment, String authorUsername) {
-        return new CommentResponse(
+        CommentResponse response = new CommentResponse(
                 comment.getId(),
                 comment.getPostId(),
                 comment.getAuthorId(),
@@ -244,5 +257,17 @@ public class CommentService {
                 comment.getCreatedAt(),
                 comment.getStatus()
         );
+        return response;
+    }
+
+    private Map<Long, String> buildAvatarMap(Set<Long> authorIds) {
+        return userProfileRepository.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(UserProfile::getUserId,
+                        p -> p.getAvatarUrl() != null ? p.getAvatarUrl() : "",
+                        (a, b) -> a));
+    }
+
+    private static String normalizeAvatarUrl(String avatarUrl) {
+        return avatarUrl != null && !avatarUrl.isEmpty() ? avatarUrl : null;
     }
 }

@@ -1,26 +1,28 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { getMyProfile, updateProfile } from '../api/user';
+import { getMyProfile, updateProfile, uploadAvatar } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
 
-/**
- * CC98 风格编辑个人资料页面组件
- */
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+
 export default function ProfileEditPage() {
-  const { user } = useAuth();
+  const { user, updateUserAvatar } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [website, setWebsite] = useState('');
   const [error, setError] = useState('');
 
-  // 获取当前资料的 Query
   const { data: profile, isLoading } = useQuery({
     queryKey: queryKeys.users.me(),
     queryFn: getMyProfile,
@@ -28,19 +30,43 @@ export default function ProfileEditPage() {
 
   useEffect(() => {
     if (profile) {
-      setAvatarUrl(profile.avatarUrl || '');
+      setCurrentAvatarUrl(profile.avatarUrl || '');
       setBio(profile.bio || '');
       setLocation(profile.location || '');
       setWebsite(profile.website || '');
     }
   }, [profile]);
 
-  // 更新资料的 Mutation
   const updateMutation = useMutation({
-    mutationFn: updateProfile,
-    onSuccess: () => {
+    mutationFn: async () => {
+      let finalAvatarUrl = currentAvatarUrl;
+      let uploadedUrl: string | null = null;
+      if (selectedFile) {
+        uploadedUrl = await uploadAvatar(selectedFile);
+        finalAvatarUrl = uploadedUrl;
+      }
+      try {
+        return await updateProfile({
+          avatarUrl: finalAvatarUrl || undefined,
+          bio: bio.trim() || undefined,
+          location: location.trim() || undefined,
+          website: website.trim() || undefined,
+        });
+      } catch (err) {
+        // Profile update failed — uploaded file is orphaned, but we can't
+        // reliably delete it from the frontend. Best-effort: leave cleanup
+        // to a future garbage-collection mechanism or admin intervention.
+        throw err;
+      }
+    },
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
       if (user) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(user.username) });
+        // Avatar changed — invalidate posts/comments so they re-fetch with new URL
+        queryClient.invalidateQueries({ queryKey: queryKeys.posts.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.comments.all });
+        updateUserAvatar(data.avatarUrl ?? null);
         navigate(`/profile/${user.username}`);
       }
     },
@@ -49,23 +75,56 @@ export default function ProfileEditPage() {
     },
   });
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('仅支持 JPG、PNG、WebP 格式的图片');
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      setError('文件大小不能超过 2MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError('');
-
-    updateMutation.mutate({
-      avatarUrl: avatarUrl.trim() || undefined,
-      bio: bio.trim() || undefined,
-      location: location.trim() || undefined,
-      website: website.trim() || undefined,
-    });
+    updateMutation.mutate();
   };
 
   const handleCancel = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     if (user) {
       navigate(`/profile/${user.username}`);
     }
   };
+
+  const displayAvatarUrl = previewUrl || (currentAvatarUrl || undefined);
 
   if (isLoading) {
     return (
@@ -78,7 +137,6 @@ export default function ProfileEditPage() {
 
   return (
     <div className="cc98-editor-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
-      {/* 1. 面包屑 */}
       <Breadcrumbs
         items={[
           { label: '版面列表', href: '/' },
@@ -87,7 +145,6 @@ export default function ProfileEditPage() {
         ]}
       />
 
-      {/* 2. 编辑卡片 */}
       <div className="cc98-editor-card">
         <div className="cc98-editor-title-bar">
           <i className="fa fa-user-circle-o"></i> 修改个人名片设置
@@ -100,46 +157,67 @@ export default function ProfileEditPage() {
         )}
 
         <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
-          {/* 头像 URL */}
+          {/* 头像上传 */}
           <div className="cc98-form-group">
-            <label htmlFor="avatarUrl">
-              头像 URL
-            </label>
-            <input
-              id="avatarUrl"
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              disabled={updateMutation.isPending}
-              placeholder="https://example.com/avatar.jpg"
-              className="cc98-form-control"
-            />
-            <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.25rem' }}>
-              请输入论坛可访问的图片 URL。如不填写，论坛将根据您的用户名生成默认萌物头像。
-            </small>
-          </div>
-
-          {/* 头像预览 */}
-          {avatarUrl && (
-            <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+            <label>头像</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
               <div style={{
                 width: '90px',
                 height: '90px',
                 borderRadius: '50%',
                 overflow: 'hidden',
-                margin: '0 auto',
                 border: '2px solid var(--border-color)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                flexShrink: 0,
+                background: 'var(--bg-secondary, #f0f0f0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}>
-                <img
-                  src={avatarUrl}
-                  alt="头像预览"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={() => setError('预览图片加载失败，请检查 URL 是否有效')}
+                {displayAvatarUrl ? (
+                  <img
+                    src={displayAvatarUrl}
+                    alt="头像预览"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <i className="fa fa-user" style={{ fontSize: '2rem', color: 'var(--text-muted)' }}></i>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
                 />
+                <button
+                  type="button"
+                  className="cc98-btn btn-publish"
+                  style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={updateMutation.isPending}
+                >
+                  <i className="fa fa-upload"></i> 选择图片
+                </button>
+                {selectedFile && (
+                  <button
+                    type="button"
+                    className="cc98-btn btn-cancel"
+                    style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+                    onClick={handleRemoveFile}
+                    disabled={updateMutation.isPending}
+                  >
+                    取消选择
+                  </button>
+                )}
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  支持 JPG、PNG、WebP，不超过 2MB
+                </small>
               </div>
             </div>
-          )}
+          </div>
 
           {/* 个人签名 bio */}
           <div className="cc98-form-group" style={{ position: 'relative' }}>

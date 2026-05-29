@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户服务
@@ -25,15 +26,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StorageService storageService;
 
     public UserService(
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            StorageService storageService
     ) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
+        this.storageService = storageService;
     }
 
     /**
@@ -128,5 +132,42 @@ public class UserService {
         userRepository.save(user);
 
         logger.info("密码修改成功: {}", username);
+    }
+
+    @Transactional
+    public UserProfileDTO uploadAvatar(String username, MultipartFile file) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+
+        UserProfile profile = userProfileRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    UserProfile newProfile = new UserProfile();
+                    newProfile.setUser(user);
+                    return newProfile;
+                });
+
+        String oldAvatarUrl = profile.getAvatarUrl();
+
+        String newAvatarUrl = storageService.store(file, user.getId());
+        profile.setAvatarUrl(newAvatarUrl);
+        userProfileRepository.save(profile);
+
+        // 删除旧文件放在 DB 保存成功之后，避免存储失败时旧文件已被删
+        if (oldAvatarUrl != null && oldAvatarUrl.startsWith("/uploads/avatars/")) {
+            storageService.delete(oldAvatarUrl);
+        }
+
+        logger.info("头像上传成功: {}", username);
+
+        return new UserProfileDTO(
+                user.getUsername(),
+                user.getEmail(),
+                profile.getAvatarUrl(),
+                profile.getBio(),
+                profile.getLocation(),
+                profile.getWebsite(),
+                user.getCreatedAt(),
+                user.getRole()
+        );
     }
 }

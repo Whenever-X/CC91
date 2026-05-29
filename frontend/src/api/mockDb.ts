@@ -852,6 +852,16 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       responseData = null;
     }
 
+    // ============ Upload API ============
+    else if (url === '/upload/avatar' && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('未登录！');
+      }
+      const mockAvatarUrl = `/uploads/avatars/${currentUser.id}_${Date.now()}.jpg`;
+      responseData = { success: true, message: '头像上传成功', data: { avatarUrl: mockAvatarUrl } };
+    }
+
     // ============ Announcement API ============
     else if (url === '/announcements' && method === 'GET') {
       responseData = [...state.announcements].sort((a, b) => {

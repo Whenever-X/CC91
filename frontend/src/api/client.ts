@@ -9,9 +9,6 @@ import { mockRequestAdapter } from './mockDb';
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 /**
@@ -25,6 +22,11 @@ client.interceptors.request.use(
     const token = localStorage.getItem('access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    } else {
+      config.headers['Content-Type'] = 'application/json';
     }
     return config;
   },

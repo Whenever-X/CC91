@@ -9,6 +9,7 @@ export interface Comment {
   postId: number;
   authorId: number;
   authorUsername: string;
+  authorAvatarUrl?: string | null;
   content: string;
   parentId: number | null;
   createdAt: string;
