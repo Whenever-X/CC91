@@ -86,6 +86,9 @@ tmp/
 temp/
 *.tmp
 
+# User uploaded files
+uploads/
+
 frontend1/
 .playwright-mcp/
 plan/
