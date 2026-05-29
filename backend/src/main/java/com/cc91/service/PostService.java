@@ -6,10 +6,12 @@ import com.cc91.dto.UpdatePostRequest;
 import com.cc91.entity.Category;
 import com.cc91.entity.Post;
 import com.cc91.entity.User;
+import com.cc91.entity.UserProfile;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.PostRepository;
 import com.cc91.repository.UserRepository;
+import com.cc91.repository.UserProfileRepository;
 import com.cc91.repository.CategoryRepository;
 import com.cc91.repository.CommentRepository;
 import org.slf4j.Logger;
@@ -34,12 +36,14 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
     private final CategoryRepository categoryRepository;
     private final CommentRepository commentRepository;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, CategoryRepository categoryRepository, CommentRepository commentRepository) {
+    public PostService(PostRepository postRepository, UserRepository userRepository, UserProfileRepository userProfileRepository, CategoryRepository categoryRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
         this.categoryRepository = categoryRepository;
         this.commentRepository = commentRepository;
     }
@@ -255,6 +259,9 @@ public class PostService {
         Map<Long, User> userMap = userRepository.findAllById(authorIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
 
+        // 批量查询用户头像
+        Map<Long, String> avatarMap = buildAvatarMap(authorIds);
+
         // 批量查询分类
         Map<Long, Category> categoryMap = categoryIds.isEmpty()
                 ? Collections.emptyMap()
@@ -279,7 +286,7 @@ public class PostService {
 
             long commentCount = commentCountMap.getOrDefault(post.getId(), 0L);
 
-            return new PostResponse(
+            PostResponse response = new PostResponse(
                     post.getId(),
                     post.getTitle(),
                     post.getContent(),
@@ -293,6 +300,9 @@ public class PostService {
                     post.getStatus(),
                     commentCount
             );
+            String avatar = avatarMap.get(post.getAuthorId());
+            response.setAuthorAvatarUrl(normalizeAvatarUrl(avatar));
+            return response;
         });
     }
 
@@ -318,6 +328,9 @@ public class PostService {
         Map<Long, User> userMap = userRepository.findAllById(authorIds).stream()
             .collect(Collectors.toMap(User::getId, u -> u));
 
+        // 批量查询用户头像
+        Map<Long, String> avatarMap = buildAvatarMap(authorIds);
+
         // 批量查询分类
         Map<Long, Category> categoryMap = categoryIds.isEmpty()
             ? Collections.emptyMap()
@@ -342,7 +355,7 @@ public class PostService {
 
             long commentCount = commentCountMap.getOrDefault(post.getId(), 0L);
 
-            return new PostResponse(
+            PostResponse response = new PostResponse(
                 post.getId(),
                 post.getTitle(),
                 post.getContent(),
@@ -356,6 +369,9 @@ public class PostService {
                 post.getStatus(),
                 commentCount
             );
+            String avatar = avatarMap.get(post.getAuthorId());
+            response.setAuthorAvatarUrl(normalizeAvatarUrl(avatar));
+            return response;
         }).collect(Collectors.toList());
         }
 
@@ -371,7 +387,7 @@ public class PostService {
 
         long commentCount = commentRepository.countByPostIdAndStatus(post.getId(), "PUBLISHED");
 
-        return new PostResponse(
+        PostResponse response = new PostResponse(
                 post.getId(),
                 post.getTitle(),
                 post.getContent(),
@@ -385,5 +401,22 @@ public class PostService {
                 post.getStatus(),
                 commentCount
         );
+
+        userProfileRepository.findByUserId(post.getAuthorId()).ifPresent(profile -> {
+            response.setAuthorAvatarUrl(normalizeAvatarUrl(profile.getAvatarUrl()));
+        });
+
+        return response;
+    }
+
+    private Map<Long, String> buildAvatarMap(Set<Long> authorIds) {
+        return userProfileRepository.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(UserProfile::getUserId,
+                        p -> p.getAvatarUrl() != null ? p.getAvatarUrl() : "",
+                        (a, b) -> a));
+    }
+
+    private static String normalizeAvatarUrl(String avatarUrl) {
+        return avatarUrl != null && !avatarUrl.isEmpty() ? avatarUrl : null;
     }
 }

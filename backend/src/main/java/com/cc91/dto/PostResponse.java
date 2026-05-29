@@ -19,6 +19,7 @@ public class PostResponse {
     private Integer viewCount;
     private String status;
     private Long commentCount;
+    private String authorAvatarUrl;
 
     public PostResponse() {}
 
@@ -90,4 +91,7 @@ public class PostResponse {
 
     public Long getCommentCount() { return commentCount; }
     public void setCommentCount(Long commentCount) { this.commentCount = commentCount; }
+
+    public String getAuthorAvatarUrl() { return authorAvatarUrl; }
+    public void setAuthorAvatarUrl(String authorAvatarUrl) { this.authorAvatarUrl = authorAvatarUrl; }
 }

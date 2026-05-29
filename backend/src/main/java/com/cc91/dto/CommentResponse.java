@@ -17,6 +17,7 @@ public class CommentResponse {
     private Long parentId;
     private LocalDateTime createdAt;
     private String status;
+    private String authorAvatarUrl;
     private List<CommentResponse> replies = new ArrayList<>();
 
     public CommentResponse() {}
@@ -60,4 +61,7 @@ public class CommentResponse {
 
     public List<CommentResponse> getReplies() { return replies; }
     public void setReplies(List<CommentResponse> replies) { this.replies = replies; }
+
+    public String getAuthorAvatarUrl() { return authorAvatarUrl; }
+    public void setAuthorAvatarUrl(String authorAvatarUrl) { this.authorAvatarUrl = authorAvatarUrl; }
 }
