@@ -100,3 +100,17 @@ export async function getMyComments(): Promise<MyComment[]> {
 export async function changePassword(data: ChangePasswordRequest): Promise<void> {
   await client.put('/users/me/password', data);
 }
+
+/**
+ * 上传头像文件
+ * POST /api/upload/avatar
+ */
+export async function uploadAvatar(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await client.post<{ success: boolean; message: string; data: { avatarUrl: string } }>(
+    '/upload/avatar',
+    formData,
+  );
+  return response.data.data.avatarUrl;
+}

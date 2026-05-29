@@ -208,6 +208,7 @@ export default function CommentSection({
                 key={comment.id}
                 id={comment.id}
                 authorUsername={comment.authorUsername}
+                authorAvatarUrl={comment.authorAvatarUrl}
                 floor={floorNum}
                 content={comment.content}
                 createdAt={comment.createdAt}

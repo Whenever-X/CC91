@@ -34,17 +34,19 @@ export default function LoginPage() {
         localStorage.setItem('refresh_token', refreshToken);
       }
 
-      // Now fetch user role
+      // Now fetch user role and avatar
       let userRole = 'USER';
+      let avatarUrl: string | null = null;
       try {
         const userResponse = await client.get(`/users/${username}`);
         userRole = userResponse.data.role || 'USER';
+        avatarUrl = userResponse.data.avatarUrl || null;
       } catch (err) {
         // If user info fetch fails, default to regular user
         console.error('Failed to fetch user role', err);
       }
 
-      login(username, accessToken, userRole);
+      login(username, accessToken, userRole, avatarUrl);
       navigate(`/profile/${username}`);
     } catch (err: any) {
       const message = err.response?.data?.message || '登录失败，请检查用户名或密码。';

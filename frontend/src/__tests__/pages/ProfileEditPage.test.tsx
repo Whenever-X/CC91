@@ -14,12 +14,10 @@ describe('ProfileEditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    // 设置当前登录用户
     localStorage.setItem('access_token', 'test-token');
     localStorage.setItem('user', JSON.stringify({ username: 'testuser', email: 'test@example.com' }));
   });
 
-  // 每次调用创建新的 wrapper 和 queryClient，避免缓存污染
   const createWrapper = () => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -59,7 +57,8 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toHaveValue('https://example.com/avatar.jpg');
+        expect(screen.getByText('头像')).toBeInTheDocument();
+        expect(screen.getByAltText('头像预览')).toHaveAttribute('src', 'https://example.com/avatar.jpg');
         expect(screen.getByLabelText('个人签名')).toHaveValue('这是我的个人签名');
         expect(screen.getByLabelText('所在地')).toHaveValue('北京');
         expect(screen.getByLabelText('个人网站')).toHaveValue('https://example.com');
@@ -68,12 +67,24 @@ describe('ProfileEditPage', () => {
 
     it('should show loading state initially', () => {
       vi.mocked(userApi.getMyProfile).mockImplementation(
-        () => new Promise(() => {}) // Never resolves
+        () => new Promise(() => {})
       );
 
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       expect(screen.getByText('加载中...')).toBeInTheDocument();
+    });
+
+    it('should show placeholder icon when no avatar', async () => {
+      const noAvatarProfile = { ...mockProfile, avatarUrl: null };
+      vi.mocked(userApi.getMyProfile).mockResolvedValue(noAvatarProfile);
+
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('头像')).toBeInTheDocument();
+        expect(screen.queryByAltText('头像预览')).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -85,12 +96,10 @@ describe('ProfileEditPage', () => {
 
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
-      // 等待表单加载
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toHaveValue('https://example.com/avatar.jpg');
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
-      // 修改表单值
       const bioInput = screen.getByLabelText('个人签名');
       await user.clear(bioInput);
       await user.type(bioInput, '更新后的个人签名');
@@ -99,7 +108,6 @@ describe('ProfileEditPage', () => {
       await user.clear(locationInput);
       await user.type(locationInput, '上海');
 
-      // 提交表单
       const submitButton = screen.getByRole('button', { name: '保存' });
       await user.click(submitButton);
 
@@ -123,17 +131,15 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
-      // 设置为只有空格的值
       const bioInput = screen.getByLabelText('个人签名');
       await user.clear(bioInput);
       await user.type(bioInput, '   ');
 
       const locationInput = screen.getByLabelText('所在地');
       await user.clear(locationInput);
-      // 不输入任何内容，保持为空
 
       await user.click(screen.getByRole('button', { name: '保存' }));
 
@@ -141,6 +147,55 @@ describe('ProfileEditPage', () => {
         const call = vi.mocked(userApi.updateProfile).mock.calls[0][0];
         expect(call.bio).toBeUndefined();
         expect(call.location).toBeUndefined();
+      });
+    });
+  });
+
+  describe('文件上传', () => {
+    it('should show file type error for invalid file', async () => {
+      vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
+
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('头像')).toBeInTheDocument();
+      });
+
+      const file = new File(['test'], 'test.gif', { type: 'image/gif' });
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      // Simulate file selection via DOM change event
+      Object.defineProperty(fileInput, 'files', { value: [file], writable: false });
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/仅支持 JPG、PNG、WebP/)).toBeInTheDocument();
+      });
+    });
+
+    it('should upload avatar and update profile on submit', async () => {
+      const user = userEvent.setup();
+      vi.mocked(userApi.getMyProfile).mockResolvedValue({ ...mockProfile, avatarUrl: null });
+      vi.mocked(userApi.uploadAvatar).mockResolvedValue('/uploads/avatars/1_1234.jpg');
+      vi.mocked(userApi.updateProfile).mockResolvedValue(mockProfile);
+
+      render(<ProfileEditPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('头像')).toBeInTheDocument();
+      });
+
+      const file = new File(['test'], 'avatar.jpg', { type: 'image/jpeg' });
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      await user.click(screen.getByRole('button', { name: '保存' }));
+
+      await waitFor(() => {
+        expect(userApi.uploadAvatar).toHaveBeenCalledWith(expect.any(File));
+        expect(userApi.updateProfile).toHaveBeenCalledWith(
+          expect.objectContaining({ avatarUrl: '/uploads/avatars/1_1234.jpg' })
+        );
       });
     });
   });
@@ -154,7 +209,7 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole('button', { name: '保存' }));
@@ -181,7 +236,7 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toHaveValue('');
+        expect(screen.getByText('头像')).toBeInTheDocument();
         expect(screen.getByLabelText('个人签名')).toHaveValue('');
         expect(screen.getByLabelText('所在地')).toHaveValue('');
         expect(screen.getByLabelText('个人网站')).toHaveValue('');
@@ -205,11 +260,9 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toHaveValue('');
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
-      // 填充表单
-      await user.type(screen.getByLabelText('头像 URL'), 'https://example.com/avatar.jpg');
       await user.type(screen.getByLabelText('个人签名'), '我的签名');
 
       await user.click(screen.getByRole('button', { name: '保存' }));
@@ -231,7 +284,7 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole('button', { name: '保存' }));
@@ -245,13 +298,13 @@ describe('ProfileEditPage', () => {
       const user = userEvent.setup();
       vi.mocked(userApi.getMyProfile).mockResolvedValue(mockProfile);
       vi.mocked(userApi.updateProfile).mockImplementation(
-        () => new Promise(() => {}) // Never resolves
+        () => new Promise(() => {})
       );
 
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
       const submitButton = screen.getByRole('button', { name: '保存' });
@@ -271,7 +324,7 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('头像 URL')).toBeInTheDocument();
+        expect(screen.getByText('头像')).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole('button', { name: '取消' }));
@@ -289,7 +342,7 @@ describe('ProfileEditPage', () => {
       render(<ProfileEditPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('8/500')).toBeInTheDocument(); // '这是我的个人签名' is 8 chars
+        expect(screen.getByText('8/500')).toBeInTheDocument();
       });
     });
   });

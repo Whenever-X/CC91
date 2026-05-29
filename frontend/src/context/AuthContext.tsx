@@ -4,13 +4,15 @@ interface User {
   username: string;
   email: string;
   role?: string;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (username: string, accessToken: string, role?: string) => void;
+  login: (username: string, accessToken: string, role?: string, avatarUrl?: string | null) => void;
+  updateUserAvatar: (avatarUrl: string | null) => void;
   logout: () => void;
 }
 
@@ -22,7 +24,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // 检查本地存储中的 token
     const token = localStorage.getItem('access_token');
     const storedUser = localStorage.getItem('user');
 
@@ -33,21 +34,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
         setIsAdmin(userData.role === 'ADMIN');
       } catch {
-        // 清除无效的用户数据
         localStorage.removeItem('user');
         localStorage.removeItem('access_token');
       }
     }
   }, []);
 
-  const login = (username: string, accessToken: string, role: string = 'USER') => {
-    const userData: User = { username, email: '', role };
+  const login = (username: string, accessToken: string, role: string = 'USER', avatarUrl?: string | null) => {
+    const userData: User = { username, email: '', role, avatarUrl };
     setUser(userData);
     setIsAuthenticated(true);
     setIsAdmin(role === 'ADMIN');
     localStorage.setItem('access_token', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
   };
+
+  const updateUserAvatar = (avatarUrl: string | null) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, avatarUrl };
+    });
+  };
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  }, [user]);
 
   const logout = () => {
     setUser(null);
@@ -59,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, login, logout, updateUserAvatar }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,6 +10,7 @@ export interface Post {
   content: string;
   authorId: number;
   authorUsername: string;
+  authorAvatarUrl?: string | null;
   categoryId?: number;
   categoryName?: string;
   status?: string;

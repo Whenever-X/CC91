@@ -149,6 +149,7 @@ export default function PostDetailPage() {
         <PostCard
           id={post.id}
           authorUsername={post.authorUsername}
+          authorAvatarUrl={post.authorAvatarUrl}
           floor="1楼"
           content={post.content}
           createdAt={post.createdAt}

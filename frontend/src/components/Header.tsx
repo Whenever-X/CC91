@@ -159,7 +159,11 @@ export default function Header() {
 
                 {/* Avatar */}
                 <Link to={`/profile/${user.username}`} className="hide-mobile">
-                  <img src={catAvatar} alt={`${user.username}的头像`} className="cc98-avatar-round" />
+                  <img
+                    src={user.avatarUrl || catAvatar}
+                    alt={`${user.username}的头像`}
+                    className="cc98-avatar-round"
+                  />
                 </Link>
               </>
             ) : (
