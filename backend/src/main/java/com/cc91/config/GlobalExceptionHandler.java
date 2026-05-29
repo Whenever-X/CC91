@@ -12,6 +12,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -71,6 +73,24 @@ public class GlobalExceptionHandler {
         logger.warn("Bad request: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(new ApiResponse<>(ex.getMessage()));
+    }
+
+    /**
+     * 处理文件上传大小超限异常
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
+        logger.warn("File size exceeded: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>("文件大小超过限制（最大2MB）"));
+    }
+
+    /**
+     * 处理静态资源不存在异常（已删除的头像等）
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Void> handleNoResourceFoundException(NoResourceFoundException ex) {
+        return ResponseEntity.notFound().build();
     }
 
     /**
