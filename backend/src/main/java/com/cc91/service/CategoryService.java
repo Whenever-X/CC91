@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,7 +25,6 @@ import java.util.stream.Collectors;
 public class CategoryService {
 
     private static final Logger logger = LoggerFactory.getLogger(CategoryService.class);
-    private static final ZoneId ZONE_SHANGHAI = ZoneId.of("Asia/Shanghai");
 
     private final CategoryRepository categoryRepository;
     private final PostRepository postRepository;
@@ -42,7 +40,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryDTO> findAll() {
         List<Category> categories = categoryRepository.findAllByOrderBySortOrderAsc();
-        LocalDateTime todayStart = LocalDate.now(ZONE_SHANGHAI).atStartOfDay(ZONE_SHANGHAI).toLocalDateTime();
+        LocalDateTime todayStart = todayStart();
 
         Map<Long, Object[]> statsMap = postRepository.countStatsByCategory("PUBLISHED", todayStart)
                 .stream()
@@ -52,13 +50,7 @@ public class CategoryService {
                 ));
 
         return categories.stream()
-                .map(cat -> {
-                    Object[] stats = statsMap.get(cat.getId());
-                    long postCount = stats != null ? ((Number) stats[1]).longValue() : 0;
-                    long todayPostCount = stats != null ? ((Number) stats[2]).longValue() : 0;
-                    return new CategoryDTO(cat.getId(), cat.getName(), cat.getDescription(),
-                            cat.getSortOrder(), cat.getCreatedAt(), postCount, todayPostCount);
-                })
+                .map(cat -> buildDTO(cat, statsMap.get(cat.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -69,7 +61,10 @@ public class CategoryService {
     public CategoryDTO findById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("版块不存在"));
-        return toCategoryDTO(category);
+        LocalDateTime todayStart = todayStart();
+        long postCount = postRepository.countByCategoryIdAndStatus(id, "PUBLISHED");
+        long todayPostCount = postRepository.countByCategoryIdAndStatusAndCreatedAtAfter(id, "PUBLISHED", todayStart);
+        return buildDTO(category, postCount, todayPostCount);
     }
 
     /**
@@ -90,8 +85,7 @@ public class CategoryService {
 
         logger.info("版块创建成功: id={}, name={}", category.getId(), category.getName());
 
-        return new CategoryDTO(category.getId(), category.getName(), category.getDescription(),
-                category.getSortOrder(), category.getCreatedAt(), 0, 0);
+        return buildDTO(category, 0, 0);
     }
 
     /**
@@ -102,7 +96,6 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("版块不存在"));
 
-        // 如果修改名称，检查是否重复
         if (request.getName() != null && !request.getName().equals(category.getName())) {
             if (categoryRepository.findByName(request.getName()).isPresent()) {
                 throw new IllegalArgumentException("版块名称已存在");
@@ -122,7 +115,7 @@ public class CategoryService {
 
         logger.info("版块更新成功: id={}, name={}", category.getId(), category.getName());
 
-        return toCategoryDTO(category);
+        return buildDTO(category, 0, 0);
     }
 
     /**
@@ -144,22 +137,18 @@ public class CategoryService {
         logger.info("版块删除成功: id={}, name={}", id, category.getName());
     }
 
-    /**
-     * 转换为 CategoryDTO
-     */
-    private CategoryDTO toCategoryDTO(Category category) {
-        long postCount = postRepository.countByCategoryIdAndStatus(category.getId(), "PUBLISHED");
-        LocalDateTime todayStart = LocalDate.now(ZONE_SHANGHAI).atStartOfDay(ZONE_SHANGHAI).toLocalDateTime();
-        long todayPostCount = postRepository.countByCategoryIdAndStatusAndCreatedAtAfter(category.getId(), "PUBLISHED", todayStart);
+    private LocalDateTime todayStart() {
+        return LocalDate.now().atStartOfDay();
+    }
 
-        return new CategoryDTO(
-                category.getId(),
-                category.getName(),
-                category.getDescription(),
-                category.getSortOrder(),
-                category.getCreatedAt(),
-                postCount,
-                todayPostCount
-        );
+    private CategoryDTO buildDTO(Category cat, long postCount, long todayPostCount) {
+        return new CategoryDTO(cat.getId(), cat.getName(), cat.getDescription(),
+                cat.getSortOrder(), cat.getCreatedAt(), postCount, todayPostCount);
+    }
+
+    private CategoryDTO buildDTO(Category cat, Object[] stats) {
+        long postCount = stats != null ? ((Number) stats[1]).longValue() : 0;
+        long todayPostCount = stats != null ? ((Number) stats[2]).longValue() : 0;
+        return buildDTO(cat, postCount, todayPostCount);
     }
 }
