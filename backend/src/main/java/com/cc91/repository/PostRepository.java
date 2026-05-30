@@ -6,7 +6,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * 帖子数据访问层
@@ -45,9 +49,24 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByCategoryIdAndStatus(Long categoryId, String status, Pageable pageable);
 
     /**
-     * 统计某分类下的帖子数量
+     * 统计某分类下的帖子数量（所有状态，用于删除前检查）
      */
     long countByCategoryId(Long categoryId);
+
+    /**
+     * 统计某分类下的已发布帖子数量
+     */
+    long countByCategoryIdAndStatus(Long categoryId, String status);
+
+    long countByCategoryIdAndStatusAndCreatedAtAfter(Long categoryId, String status, LocalDateTime since);
+
+    /**
+     * 批量统计各版块的已发布帖子数和今日新帖数（单次查询）
+     */
+    @Query("SELECT p.categoryId, COUNT(p), " +
+           "SUM(CASE WHEN p.createdAt >= :todayStart THEN 1 ELSE 0 END) " +
+           "FROM Post p WHERE p.status = :status GROUP BY p.categoryId")
+    List<Object[]> countStatsByCategory(@Param("status") String status, @Param("todayStart") LocalDateTime todayStart);
 
     /**
      * 按标题或内容搜索帖子（分页）

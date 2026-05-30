@@ -43,8 +43,8 @@ describe('CategoryManage', () => {
   };
 
   const mockCategories = [
-    { id: 1, name: 'Tech', description: 'Technology board', sortOrder: 1 },
-    { id: 2, name: 'Life', description: 'Daily life', sortOrder: 2 },
+    { id: 1, name: 'Tech', description: 'Technology board', sortOrder: 1, createdAt: '2024-01-01T10:00:00', postCount: 25, todayPostCount: 4 },
+    { id: 2, name: 'Life', description: 'Daily life', sortOrder: 2, createdAt: '2024-01-01T10:00:00', postCount: 10, todayPostCount: 1 },
   ];
 
   const setupMocks = () => {

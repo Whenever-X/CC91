@@ -9,20 +9,15 @@ interface BoardCardProps {
  * CC98 经典热门版块卡片组件
  */
 export default function BoardCard({ category, onClick }: BoardCardProps) {
-  const { id, name, description } = category;
+  const { id, name, description, postCount, todayPostCount } = category;
 
-  // Mock BBS parameters not provided by core Category interface
-  const icon = id % 4 === 0 
-    ? 'fa-laptop' 
-    : id % 4 === 1 
-      ? 'fa-heartbeat' 
-      : id % 4 === 2 
-        ? 'fa-gamepad' 
+  const icon = id % 4 === 0
+    ? 'fa-laptop'
+    : id % 4 === 1
+      ? 'fa-heartbeat'
+      : id % 4 === 2
+        ? 'fa-gamepad'
         : 'fa-comments-o';
-  
-  // Deterministic mock stats based on category ID
-  const topicCount = Math.floor((id * 137 + 42) % 300) + 15;
-  const replyCount = topicCount * 3 + Math.floor((id * 29) % 50);
 
   return (
     <div className="cc98-board-card card" onClick={() => onClick && onClick(id)}>
@@ -36,15 +31,15 @@ export default function BoardCard({ category, onClick }: BoardCardProps) {
         <div className="cc98-board-name">{name}</div>
         <div className="cc98-board-desc">{description || '暂无描述。'}</div>
         <div className="cc98-board-stats">
-          <span>主题: <strong>{topicCount}</strong></span>
+          <span>主题: <strong>{postCount}</strong></span>
           <span className="bullet-dot">·</span>
-          <span>回复: <strong>{replyCount}</strong></span>
+          <span>今日: <strong>{todayPostCount}</strong></span>
         </div>
       </div>
 
       {/* 3. Small top right badge */}
       <span className="cc98-board-badge" title="主题帖总数">
-        {topicCount} 贴
+        {postCount} 贴
       </span>
 
       <style>{`
