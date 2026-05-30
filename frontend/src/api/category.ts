@@ -10,6 +10,8 @@ export interface Category {
   description: string;
   sortOrder: number;
   createdAt: string;
+  postCount: number;
+  todayPostCount: number;
 }
 
 /**

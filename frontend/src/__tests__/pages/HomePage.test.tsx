@@ -39,8 +39,8 @@ describe('HomePage', () => {
   };
 
   const mockCategories = [
-    { id: 1, name: 'Tech', description: 'Technology discussions', sortOrder: 1, createdAt: '2024-01-01T10:00:00' },
-    { id: 2, name: 'Life', description: 'Life chat', sortOrder: 2, createdAt: '2024-01-01T10:00:00' },
+    { id: 1, name: 'Tech', description: 'Technology discussions', sortOrder: 1, createdAt: '2024-01-01T10:00:00', postCount: 42, todayPostCount: 5 },
+    { id: 2, name: 'Life', description: 'Life chat', sortOrder: 2, createdAt: '2024-01-01T10:00:00', postCount: 18, todayPostCount: 2 },
   ];
 
   const mockPosts = [

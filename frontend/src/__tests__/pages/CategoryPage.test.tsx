@@ -49,6 +49,8 @@ describe('CategoryPage', () => {
     description: 'Talk about technology',
     sortOrder: 1,
     createdAt: '2024-01-01T10:00:00',
+    postCount: 30,
+    todayPostCount: 3,
   };
 
   const mockPosts = [
