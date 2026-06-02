@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getPostById, deletePost } from '../api/post';
+import { togglePostLike } from '../api/like';
+import { togglePostBookmark } from '../api/bookmark';
 import CommentSection from '../components/CommentSection';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -19,7 +21,6 @@ export default function PostDetailPage() {
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  const [isFavorited, setIsFavorited] = useState(false);
 
   const postId = id ? parseInt(id, 10) : 0;
 
@@ -43,6 +44,24 @@ export default function PostDetailPage() {
     },
   });
 
+  // 点赞 mutation
+  const likeMutation = useMutation({
+    mutationFn: togglePostLike,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
+    },
+  });
+
+  // 收藏 mutation
+  const bookmarkMutation = useMutation({
+    mutationFn: togglePostBookmark,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
+      queryClient.invalidateQueries({ queryKey: ['users', 'me', 'bookmarks'] });
+    },
+  });
+
   const handleDelete = async () => {
     if (!post) return;
     if (!confirm('确定要删除这篇帖子吗？此操作不可恢复。')) return;
@@ -56,10 +75,24 @@ export default function PostDetailPage() {
   };
 
   const handleFavoriteToggle = () => {
-    setIsFavorited(!isFavorited);
-    alert(isFavorited ? '已取消收藏此贴' : '已收藏此贴到您的个人中心');
+    if (!currentUser) {
+      alert('请先登录！');
+      navigate('/login');
+      return;
+    }
+    bookmarkMutation.mutate(postId);
   };
 
+  const handleLikeToggle = () => {
+    if (!currentUser) {
+      alert('请先登录！');
+      navigate('/login');
+      return;
+    }
+    likeMutation.mutate(postId);
+  };
+
+  const isFavorited = !!post?.isBookmarkedByCurrentUser;
   const isAuthor = currentUser?.username === post?.authorUsername;
 
   if (isLoading) {
@@ -159,6 +192,11 @@ export default function PostDetailPage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           isDeleting={isDeleting}
+          likeCount={post.likeCount}
+          isLikedByCurrentUser={post.isLikedByCurrentUser}
+          isBookmarkedByCurrentUser={post.isBookmarkedByCurrentUser}
+          onToggleLike={handleLikeToggle}
+          onToggleBookmark={handleFavoriteToggle}
         />
       </div>
 

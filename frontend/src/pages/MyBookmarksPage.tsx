@@ -1,21 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { getMyPosts } from '../api/user';
-import { queryKeys } from '../lib/queryKeys';
+import { getMyBookmarks } from '../api/bookmark';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PersonalSidebar from '../components/PersonalSidebar';
 
 /**
- * CC98 风格我的帖子页面 - 展示当前用户全部帖子
+ * 我的收藏页面 - 展示当前用户收藏的帖子
  */
-export default function MyPostsPage() {
+export default function MyBookmarksPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: myPosts = [], isLoading, error } = useQuery({
-    queryKey: queryKeys.users.mePosts(),
-    queryFn: () => getMyPosts(),
+  const { data: bookmarks = [], isLoading, error } = useQuery({
+    queryKey: ['users', 'me', 'bookmarks'],
+    queryFn: getMyBookmarks,
     enabled: !!user,
   });
 
@@ -23,7 +22,7 @@ export default function MyPostsPage() {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 0' }}>
         <div className="spinner"></div>
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入您发表的主题帖...</p>
+        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)' }}>正在载入您收藏的帖子...</p>
       </div>
     );
   }
@@ -45,13 +44,13 @@ export default function MyPostsPage() {
   }
 
   return (
-    <div className="cc98-my-posts-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+    <div className="cc98-my-bookmarks-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
       {/* 1. 面包屑 */}
       <Breadcrumbs 
         items={[
           { label: '首页', href: '/' },
           { label: '个人中心', href: '/dashboard' },
-          { label: '我的主题帖' }
+          { label: '我的收藏' }
         ]} 
       />
 
@@ -61,20 +60,20 @@ export default function MyPostsPage() {
 
         <div className="personal-center-content" style={{ flex: 1, minWidth: 0 }}>
           <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>我的帖子</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>我的收藏</h2>
             <span className="summary-info" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              共 {myPosts.length} 篇帖子
+              共 {bookmarks.length} 篇帖子
             </span>
           </div>
 
-          {myPosts.length === 0 ? (
-            <div className="cc98-my-posts-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
-              <i className="fa fa-pencil-square-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
-              你还没有发布帖子
+          {bookmarks.length === 0 ? (
+            <div className="cc98-my-bookmarks-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
+              <i className="fa fa-star-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
+              您还没有收藏过帖子
             </div>
           ) : (
             <div className="cc98-posts-card-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {myPosts.map((post) => (
+              {bookmarks.map((post) => (
                 <div
                   key={post.id}
                   className="card cc98-post-card-item"
@@ -106,8 +105,11 @@ export default function MyPostsPage() {
                     {post.content}
                   </p>
                   <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    <span><i className="fa fa-user"></i> 作者: {post.authorUsername}</span>
                     <span><i className="fa fa-eye"></i> 阅读量: {post.viewCount}</span>
-                    <span><i className="fa fa-comments"></i> 回复数: {post.commentCount ?? 0}</span>
+                    {post.commentCount !== undefined && (
+                      <span><i className="fa fa-comments"></i> 回复数: {post.commentCount}</span>
+                    )}
                   </div>
                 </div>
               ))}

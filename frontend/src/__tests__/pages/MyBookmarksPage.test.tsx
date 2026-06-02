@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../../context/AuthContext';
-import MyPostsPage from '../../pages/MyPostsPage';
-import * as userApi from '../../api/user';
+import MyBookmarksPage from '../../pages/MyBookmarksPage';
+import * as bookmarkApi from '../../api/bookmark';
 
-vi.mock('../../api/user');
+vi.mock('../../api/bookmark');
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => ({
@@ -15,21 +15,21 @@ vi.mock('react-router-dom', async () => ({
   useNavigate: () => mockNavigate,
 }));
 
-const mockPost = {
-  id: 1,
-  title: 'My Post 1',
-  content: 'This is the content of my post.',
-  authorId: 1,
-  authorUsername: 'testuser',
-  categoryName: '技术交流',
-  createdAt: '2024-01-02T10:00:00',
-  updatedAt: '2024-01-02T10:00:00',
-  viewCount: 100,
-  commentCount: 5,
-  status: 'PUBLISHED',
+const mockBookmark = {
+  id: 10,
+  title: 'Bookmarked Post 1',
+  content: 'Content of bookmarked post.',
+  authorId: 2,
+  authorUsername: 'otheruser',
+  categoryName: '心灵之约',
+  createdAt: '2024-01-04T12:00:00',
+  updatedAt: '2024-01-04T12:00:00',
+  viewCount: 15,
+  commentCount: 2,
+  status: 'APPROVED',
 };
 
-describe('MyPostsPage', () => {
+describe('MyBookmarksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -37,7 +37,7 @@ describe('MyPostsPage', () => {
     localStorage.setItem('user', JSON.stringify({ username: 'testuser', email: 'test@example.com' }));
   });
 
-  const createWrapper = (initialEntries: string[] = ['/dashboard/posts']) => {
+  const createWrapper = (initialEntries: string[] = ['/dashboard/bookmarks']) => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false, gcTime: 0 },
@@ -56,52 +56,52 @@ describe('MyPostsPage', () => {
     };
   };
 
-  it('应该渲染我的帖子列表（含统计和摘要）', async () => {
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([mockPost]);
+  it('应该渲染我的收藏列表', async () => {
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([mockBookmark]);
 
-    render(<MyPostsPage />, { wrapper: createWrapper() });
+    render(<MyBookmarksPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('My Post 1')).toBeInTheDocument();
-      expect(screen.getByText('This is the content of my post.')).toBeInTheDocument();
+      expect(screen.getByText('Bookmarked Post 1')).toBeInTheDocument();
+      expect(screen.getByText('Content of bookmarked post.')).toBeInTheDocument();
+      expect(screen.getByText('作者: otheruser')).toBeInTheDocument();
     });
     expect(screen.getByText('共 1 篇帖子')).toBeInTheDocument();
   });
 
-  it('点击帖子应跳转到帖子详情页', async () => {
+  it('点击帖子应跳转到详情页', async () => {
     const user = userEvent.setup();
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([mockBookmark]);
 
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([{ ...mockPost, id: 123, title: 'Target Post' }]);
+    render(<MyBookmarksPage />, { wrapper: createWrapper() });
 
-    render(<MyPostsPage />, { wrapper: createWrapper() });
-
-    const title = await screen.findByText('Target Post');
+    const title = await screen.findByText('Bookmarked Post 1');
     const card = title.closest('.card');
     await user.click(card!);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/posts/123');
+    expect(mockNavigate).toHaveBeenCalledWith('/posts/10');
+  });
+
+  it('空列表时显示相应提示', async () => {
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([]);
+
+    render(<MyBookmarksPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('您还没有收藏过帖子')).toBeInTheDocument();
+    });
   });
 
   it('点击返回 Dashboard 应导航到 /dashboard', async () => {
     const user = userEvent.setup();
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([]);
 
-    render(<MyPostsPage />, { wrapper: createWrapper() });
+    render(<MyBookmarksPage />, { wrapper: createWrapper() });
 
     const links = await screen.findAllByRole('link', { name: '个人中心' });
     const sidebarLink = links.find(el => el.closest('.cc98-personal-sidebar'));
     await user.click(sidebarLink!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
-  });
-
-  it('空列表应显示空状态提示', async () => {
-    vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
-
-    render(<MyPostsPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText('你还没有发布帖子')).toBeInTheDocument();
-    });
   });
 });

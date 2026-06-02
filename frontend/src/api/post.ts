@@ -18,6 +18,9 @@ export interface Post {
   updatedAt: string;
   viewCount: number;
   commentCount?: number;
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
+  isBookmarkedByCurrentUser?: boolean;
 }
 
 /**

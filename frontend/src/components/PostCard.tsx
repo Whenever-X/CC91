@@ -18,6 +18,13 @@ interface PostCardProps {
   isDeleting?: boolean;
   currentUserCanModify?: boolean;
   children?: React.ReactNode;
+  
+  // New props for Likes and Bookmarks
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
+  isBookmarkedByCurrentUser?: boolean;
+  onToggleLike?: () => void;
+  onToggleBookmark?: () => void;
 }
 
 // Generate deterministic hash code for user stats
@@ -46,7 +53,12 @@ export default function PostCard({
   onEdit,
   isDeleting = false,
   currentUserCanModify = false,
-  children
+  children,
+  likeCount,
+  isLikedByCurrentUser,
+  isBookmarkedByCurrentUser,
+  onToggleLike,
+  onToggleBookmark
 }: PostCardProps) {
   // Deterministic user stats based on username hash
   const hash = hashCode(authorUsername || 'anon');
@@ -58,21 +70,29 @@ export default function PostCard({
   const signature = hash % 2 === 0 ? '行百里者半九十，心之所向素履以往。' : '浙大求是人，纵横天地间！ 🌟';
 
   // Support local likes/dislikes since the real backend doesn't save them
-  const [likes, setLikes] = useState((hash % 12) + 1);
+  const [localLikes, setLocalLikes] = useState((hash % 12) + 1);
   const [dislikes, setDislikes] = useState(hash % 3);
-  const [liked, setLiked] = useState(false);
+  const [localLiked, setLocalLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
 
+  const hasLikeApi = onToggleLike !== undefined;
+  const likes = hasLikeApi ? (likeCount ?? 0) : localLikes;
+  const liked = hasLikeApi ? !!isLikedByCurrentUser : localLiked;
+
   const handleLike = () => {
-    if (liked) {
-      setLikes(l => l - 1);
-      setLiked(false);
+    if (hasLikeApi) {
+      onToggleLike?.();
     } else {
-      setLikes(l => l + 1);
-      setLiked(true);
-      if (disliked) {
-        setDislikes(d => d - 1);
-        setDisliked(false);
+      if (localLiked) {
+        setLocalLikes(l => l - 1);
+        setLocalLiked(false);
+      } else {
+        setLocalLikes(l => l + 1);
+        setLocalLiked(true);
+        if (disliked) {
+          setDislikes(d => d - 1);
+          setDisliked(false);
+        }
       }
     }
   };
@@ -261,6 +281,15 @@ export default function PostCard({
           >
             <i className={`fa ${disliked ? 'fa-thumbs-down' : 'fa-thumbs-o-down'}`}></i> 踩 ({dislikes})
           </div>
+          {onToggleBookmark && (
+            <div
+              className={`cc98-action-item ${isBookmarkedByCurrentUser ? 'active favorited' : ''}`}
+              onClick={onToggleBookmark}
+              title={isBookmarkedByCurrentUser ? '从收藏夹中移除' : '收藏此贴'}
+            >
+              <i className={`fa ${isBookmarkedByCurrentUser ? 'fa-star' : 'fa-star-o'}`}></i> {isBookmarkedByCurrentUser ? '已收藏' : '收藏'}
+            </div>
+          )}
           {onQuote && (
             <div
               className="cc98-action-item"
@@ -551,6 +580,10 @@ export default function PostCard({
 
         .cc98-action-item.disliked {
           color: #fb6165;
+        }
+
+        .cc98-action-item.favorited {
+          color: var(--accent-color);
         }
 
         .cc98-post-quote {

@@ -8,6 +8,7 @@ import type { Notification } from './notification';
 import type { Announcement } from './announcement';
 
 const STORAGE_KEY = 'cc91_mock_db';
+const viewedPostIds = new Set<number>();
 
 interface MockDbState {
   categories: Category[];
@@ -17,6 +18,8 @@ interface MockDbState {
   announcements: Announcement[];
   users: AdminUser[];
   profiles: { [username: string]: UserProfile };
+  likes?: { postId: number; userId: number }[];
+  bookmarks?: { postId: number; userId: number }[];
   lastIds: {
     category: number;
     post: number;
@@ -101,16 +104,19 @@ const INITIAL_STATE: MockDbState = {
  */
 function getDbState(): MockDbState {
   const data = localStorage.getItem(STORAGE_KEY);
+  let state: MockDbState;
   if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_STATE));
-    return INITIAL_STATE;
+    state = { ...INITIAL_STATE };
+  } else {
+    try {
+      state = JSON.parse(data);
+    } catch (e) {
+      state = { ...INITIAL_STATE };
+    }
   }
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_STATE));
-    return INITIAL_STATE;
-  }
+  if (!state.likes) state.likes = [];
+  if (!state.bookmarks) state.bookmarks = [];
+  return state;
 }
 
 /**
@@ -176,6 +182,21 @@ function getCurrentUser(config: AxiosRequestConfig): { username: string; role: s
     }
   }
   return null;
+}
+
+function decoratePost(post: Post, userId: number | null, dbState: MockDbState): Post {
+  const likes = dbState.likes || [];
+  const bookmarks = dbState.bookmarks || [];
+  const postLikes = likes.filter(l => l.postId === post.id);
+  const likeCount = postLikes.length;
+  const isLikedByCurrentUser = userId ? likes.some(l => l.postId === post.id && l.userId === userId) : false;
+  const isBookmarkedByCurrentUser = userId ? bookmarks.some(b => b.postId === post.id && b.userId === userId) : false;
+  return {
+    ...post,
+    likeCount,
+    isLikedByCurrentUser,
+    isBookmarkedByCurrentUser,
+  };
 }
 
 /**
@@ -431,9 +452,12 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         status = 404;
         throw new Error('主题帖不存在或已被删除！');
       }
-      // Increment views
-      state.posts[postIdx].viewCount++;
-      saveDbState(state);
+      // Increment views only once per session
+      if (!viewedPostIds.has(postId)) {
+        state.posts[postIdx].viewCount++;
+        viewedPostIds.add(postId);
+        saveDbState(state);
+      }
       responseData = state.posts[postIdx];
     }
     else if (url === '/posts' && method === 'POST') {
@@ -516,6 +540,73 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       state.comments = state.comments.filter(c => c.postId !== postId);
       saveDbState(state);
       responseData = null;
+    }
+    else if (url.match(/^\/posts\/\d+\/like$/) && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      const postId = parseInt(url.split('/')[2]);
+      const post = state.posts.find(p => p.id === postId);
+      if (!post) {
+        status = 404;
+        throw new Error('帖子不存在！');
+      }
+      if (!state.likes) state.likes = [];
+      const likeIdx = state.likes.findIndex(l => l.postId === postId && l.userId === currentUser.id);
+      let isLiked = false;
+      if (likeIdx > -1) {
+        state.likes.splice(likeIdx, 1);
+      } else {
+        state.likes.push({ postId, userId: currentUser.id });
+        isLiked = true;
+      }
+      saveDbState(state);
+      const postLikes = state.likes.filter(l => l.postId === postId);
+      responseData = {
+        message: isLiked ? '点赞成功' : '已取消点赞',
+        data: {
+          likeCount: postLikes.length,
+          isLiked
+        }
+      };
+    }
+    else if (url.match(/^\/posts\/\d+\/bookmark$/) && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      const postId = parseInt(url.split('/')[2]);
+      const post = state.posts.find(p => p.id === postId);
+      if (!post) {
+        status = 404;
+        throw new Error('帖子不存在！');
+      }
+      if (!state.bookmarks) state.bookmarks = [];
+      const bookmarkIdx = state.bookmarks.findIndex(b => b.postId === postId && b.userId === currentUser.id);
+      let isBookmarked = false;
+      if (bookmarkIdx > -1) {
+        state.bookmarks.splice(bookmarkIdx, 1);
+      } else {
+        state.bookmarks.push({ postId, userId: currentUser.id });
+        isBookmarked = true;
+      }
+      saveDbState(state);
+      responseData = {
+        message: isBookmarked ? '收藏成功' : '已取消收藏',
+        data: {
+          isBookmarked
+        }
+      };
+    }
+    else if (url === '/users/me/bookmarks' && method === 'GET') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      if (!state.bookmarks) state.bookmarks = [];
+      const userBookmarkedIds = state.bookmarks.filter(b => b.userId === currentUser.id).map(b => b.postId);
+      responseData = state.posts.filter(p => userBookmarkedIds.includes(p.id) && p.status === 'APPROVED');
     }
 
     // ============ Comment API ============
@@ -961,6 +1052,20 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
     else {
       status = 404;
       throw new Error(`Mock endpoint not found: ${method} ${url}`);
+    }
+
+    // Post decoration logic
+    if (responseData) {
+      const isPost = (obj: any) => obj && typeof obj === 'object' && 'title' in obj && 'content' in obj && 'viewCount' in obj;
+      if (Array.isArray(responseData)) {
+        responseData = responseData.map(item => isPost(item) ? decoratePost(item, currentUser?.id ?? null, state) : item);
+      } else if (responseData.content && Array.isArray(responseData.content)) {
+        responseData.content = responseData.content.map((item: any) => isPost(item) ? decoratePost(item, currentUser?.id ?? null, state) : item);
+      } else if (isPost(responseData)) {
+        responseData = decoratePost(responseData, currentUser?.id ?? null, state);
+      } else if (responseData.data && isPost(responseData.data)) {
+        responseData.data = decoratePost(responseData.data, currentUser?.id ?? null, state);
+      }
     }
 
     // Return successful response

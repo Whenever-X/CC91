@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getMyComments } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
+import PersonalSidebar from '../components/PersonalSidebar';
 
 /**
  * CC98 风格的我的回复/评论页面
@@ -33,42 +34,39 @@ export default function MyCommentsPage() {
         ]} 
       />
 
-      <div style={{ marginBottom: '1.25rem' }}>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="cc98-btn btn-publish"
-          style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-        >
-          <i className="fa fa-chevron-left"></i> 返回 Dashboard
-        </button>
-      </div>
+      {/* 2. 左右双栏布局 */}
+      <div className="personal-center-layout" style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}>
+        <PersonalSidebar />
 
-      {/* 2. 主体 Panel */}
-      <div className="cc98-panel-classic col-a">
-        <div className="cc98-panel-title">
-          <i className="fa fa-comments-o"></i> 我的回复评论历史 ({myComments.length} 条)
-        </div>
-        <div className="cc98-panel-body" style={{ padding: '0.5rem 0' }}>
-          {isLoading ? (
-            <div className="loading-state">载入回复历史数据中...</div>
-          ) : error ? (
-            <div className="error-state">获取回复列表失败</div>
-          ) : myComments.length === 0 ? (
-            <div className="empty-state">你还没有发表过任何评论回复</div>
-          ) : (
-            <ul className="cc98-dashboard-list">
-              {myComments.map((c) => (
-                <li key={c.id} onClick={() => navigate(`/posts/${c.postId}`)}>
-                  <div className="item-title comment-text">{c.content}</div>
-                  <div className="item-meta">
-                    <span>回复时间: {formatTime(c.createdAt)}</span>
-                    <span>·</span>
-                    <span className="source-topic">来自：{c.postTitle}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="personal-center-content" style={{ flex: 1, minWidth: 0 }}>
+          {/* 主体 Panel */}
+          <div className="cc98-panel-classic col-a">
+            <div className="cc98-panel-title">
+              <i className="fa fa-comments-o"></i> 我的回复评论历史 ({myComments.length} 条)
+            </div>
+            <div className="cc98-panel-body" style={{ padding: '0.5rem 0' }}>
+              {isLoading ? (
+                <div className="loading-state">载入回复历史数据中...</div>
+              ) : error ? (
+                <div className="error-state">获取回复列表失败</div>
+              ) : myComments.length === 0 ? (
+                <div className="empty-state">你还没有发表过任何评论回复</div>
+              ) : (
+                <ul className="cc98-dashboard-list">
+                  {myComments.map((c) => (
+                    <li key={c.id} onClick={() => navigate(`/posts/${c.postId}`)}>
+                      <div className="item-title comment-text">{c.content}</div>
+                      <div className="item-meta">
+                        <span>回复时间: {formatTime(c.createdAt)}</span>
+                        <span>·</span>
+                        <span className="source-topic">来自：{c.postTitle}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

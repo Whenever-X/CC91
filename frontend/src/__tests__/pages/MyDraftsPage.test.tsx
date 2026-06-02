@@ -121,8 +121,9 @@ describe('MyDraftsPage', () => {
 
     render(<MyDraftsPage />, { wrapper: createWrapper() });
 
-    const btn = await screen.findByRole('button', { name: /返回 Dashboard/ });
-    await user.click(btn);
+    const links = await screen.findAllByRole('link', { name: '个人中心' });
+    const sidebarLink = links.find(el => el.closest('.cc98-personal-sidebar'));
+    await user.click(sidebarLink!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
   });

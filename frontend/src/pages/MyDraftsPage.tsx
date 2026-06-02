@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getMyDrafts } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
+import PersonalSidebar from '../components/PersonalSidebar';
 
 /**
  * CC98 风格我的草稿箱页面
@@ -58,86 +59,52 @@ export default function MyDraftsPage() {
         ]} 
       />
 
-      {/* 2. 统计与发帖 */}
-      <div className="cc98-list-meta-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="cc98-btn btn-publish"
-          style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-        >
-          <i className="fa fa-chevron-left"></i> 返回 Dashboard
-        </button>
-        <div className="summary-info">
-          共 {myDrafts.length} 篇草稿
+      {/* 2. 左右双栏布局 */}
+      <div className="personal-center-layout" style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}>
+        <PersonalSidebar />
+
+        <div className="personal-center-content" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>我的草稿</h2>
+            <div className="summary-info">
+              共 {myDrafts.length} 篇草稿
+            </div>
+          </div>
+
+          {myDrafts.length === 0 ? (
+            <div className="cc98-my-drafts-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
+              <i className="fa fa-sticky-note-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
+              暂无草稿
+            </div>
+          ) : (
+            <div className="cc98-drafts-grid">
+              {myDrafts.map((draft) => (
+                <div
+                  key={draft.id}
+                  className="card cc98-draft-card"
+                  onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
+                >
+                  <div className="draft-card-header">
+                    <span className="draft-tag">草稿</span>
+                    <span className="draft-time">{formatTime(draft.createdAt)}</span>
+                  </div>
+                  <h3 className="draft-card-title">{draft.title || '(无标题)'}</h3>
+                  <p className="draft-card-body">{draft.content || '(空内容)'}</p>
+                  <div className="draft-card-footer">
+                    <span>版块: {draft.categoryName || '未指定'}</span>
+                    <span className="edit-action"><i className="fa fa-edit"></i> 继续编辑</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {myDrafts.length === 0 ? (
-        <div className="cc98-my-drafts-empty" style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', border: '1px dashed var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
-          <i className="fa fa-sticky-note-o" style={{ fontSize: '2.5rem', opacity: 0.4, display: 'block', marginBottom: '0.8rem' }}></i>
-          暂无草稿
-        </div>
-      ) : (
-        <div className="cc98-drafts-grid">
-          {myDrafts.map((draft) => (
-            <div
-              key={draft.id}
-              className="card cc98-draft-card"
-              onClick={() => navigate(`/posts/new?draftId=${draft.id}`)}
-            >
-              <div className="draft-card-header">
-                <span className="draft-tag">草稿</span>
-                <span className="draft-time">{formatTime(draft.createdAt)}</span>
-              </div>
-              <h3 className="draft-card-title">{draft.title || '(无标题)'}</h3>
-              <p className="draft-card-body">{draft.content || '(空内容)'}</p>
-              <div className="draft-card-footer">
-                <span>版块: {draft.categoryName || '未指定'}</span>
-                <span className="edit-action"><i className="fa fa-edit"></i> 继续编辑</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <style>{`
-        .cc98-list-meta-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.25rem;
-          gap: 1.5rem;
-        }
-
         .summary-info {
           font-size: 0.9rem;
           color: var(--text-muted);
-        }
-
-        .summary-info strong {
-          color: var(--primary-text);
-        }
-
-        .cc98-new-post-btn {
-          background-color: var(--primary-color);
-          color: white;
-          border: none;
-          padding: 0.55rem 1.25rem;
-          border-radius: var(--cc98-radius-pill);
-          font-weight: bold;
-          font-size: 0.88rem;
-          cursor: pointer;
-          transition: var(--cc98-transition);
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .cc98-new-post-btn:hover {
-          background-color: var(--accent-color);
-          color: #333;
-          transform: translateY(-1px);
         }
 
         .cc98-my-drafts-empty {
