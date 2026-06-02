@@ -105,8 +105,12 @@ export default function PostCard({
       setDislikes(d => d + 1);
       setDisliked(true);
       if (liked) {
-        setLikes(l => l - 1);
-        setLiked(false);
+        if (hasLikeApi) {
+          onToggleLike?.();
+        } else {
+          setLocalLikes(l => l - 1);
+          setLocalLiked(false);
+        }
       }
     }
   };

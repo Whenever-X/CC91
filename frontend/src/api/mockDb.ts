@@ -453,7 +453,8 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         throw new Error('主题帖不存在或已被删除！');
       }
       // Increment views only once per session
-      if (!viewedPostIds.has(postId)) {
+      const increaseView = params.increaseView !== false && params.increaseView !== 'false';
+      if (increaseView && !viewedPostIds.has(postId)) {
         state.posts[postIdx].viewCount++;
         viewedPostIds.add(postId);
         saveDbState(state);

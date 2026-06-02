@@ -72,8 +72,12 @@ export async function createPost(data: CreatePostRequest): Promise<Post> {
  * Get post detail
  * GET /api/posts/{id} - backend returns PostResponse directly
  */
-export async function getPostById(id: number): Promise<Post> {
-  const response = await client.get<Post>(`/posts/${id}`);
+export async function getPostById(id: number, increaseView?: boolean): Promise<Post> {
+  const response = await client.get<Post>(`/posts/${id}`, {
+    params: {
+      ...(increaseView !== undefined ? { increaseView } : {})
+    }
+  });
   return response.data;
 }
 

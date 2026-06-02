@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
@@ -24,10 +24,22 @@ export default function PostDetailPage() {
 
   const postId = id ? parseInt(id, 10) : 0;
 
+  const lastPostIdRef = useRef<number>(0);
+  const hasLoadedRef = useRef(false);
+
+  if (lastPostIdRef.current !== postId) {
+    hasLoadedRef.current = false;
+    lastPostIdRef.current = postId;
+  }
+
   // 获取帖子详情
   const { data: post, isLoading, error } = useQuery({
     queryKey: queryKeys.posts.detail(postId),
-    queryFn: () => getPostById(postId),
+    queryFn: () => {
+      const increaseView = !hasLoadedRef.current;
+      hasLoadedRef.current = true;
+      return getPostById(postId, increaseView);
+    },
     enabled: postId > 0,
   });
 
@@ -47,8 +59,15 @@ export default function PostDetailPage() {
   // 点赞 mutation
   const likeMutation = useMutation({
     mutationFn: togglePostLike,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.posts.detail(postId), (oldPost: any) => {
+        if (!oldPost) return oldPost;
+        return {
+          ...oldPost,
+          likeCount: data.likeCount,
+          isLikedByCurrentUser: data.isLiked,
+        };
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
     },
   });
@@ -56,8 +75,14 @@ export default function PostDetailPage() {
   // 收藏 mutation
   const bookmarkMutation = useMutation({
     mutationFn: togglePostBookmark,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(postId) });
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.posts.detail(postId), (oldPost: any) => {
+        if (!oldPost) return oldPost;
+        return {
+          ...oldPost,
+          isBookmarkedByCurrentUser: data.isBookmarked,
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['users', 'me', 'bookmarks'] });
     },
   });
