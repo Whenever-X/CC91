@@ -95,9 +95,14 @@ export async function deletePost(id: number): Promise<void> {
  * Get paginated post list
  * GET /api/posts?page=0&size=10 - backend returns Page directly
  */
-export async function getPostList(page: number = 0, size: number = 10, status?: string): Promise<PageResponse<Post>> {
+export async function getPostList(
+  page: number = 0,
+  size: number = 10,
+  status?: string,
+  sort?: string
+): Promise<PageResponse<Post>> {
   const response = await client.get<PageResponse<Post>>('/posts', {
-    params: { page, size, ...(status ? { status } : {}) }
+    params: { page, size, ...(status ? { status } : {}), ...(sort ? { sort } : {}) }
   });
   return response.data;
 }
@@ -106,9 +111,14 @@ export async function getPostList(page: number = 0, size: number = 10, status?: 
  * Get posts by category
  * GET /api/posts/by-category/{categoryId}?page=0&size=10 - backend returns Page directly
  */
-export async function getPostsByCategory(categoryId: number, page: number = 0, size: number = 10): Promise<PageResponse<Post>> {
+export async function getPostsByCategory(
+  categoryId: number,
+  page: number = 0,
+  size: number = 10,
+  sort?: string
+): Promise<PageResponse<Post>> {
   const response = await client.get<PageResponse<Post>>(`/posts/by-category/${categoryId}`, {
-    params: { page, size }
+    params: { page, size, ...(sort ? { sort } : {}) }
   });
   return response.data;
 }

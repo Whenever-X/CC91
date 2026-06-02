@@ -15,6 +15,7 @@ export default function PostListPage() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<number | undefined>(undefined);
+  const [sortBy, setSortBy] = useState('latest');
   const pageSize = 10;
 
   // 获取版块列表
@@ -27,12 +28,12 @@ export default function PostListPage() {
   const { data: postsData, isLoading, error } = useQuery({
     queryKey:
       categoryFilter != null
-        ? queryKeys.posts.byCategory(categoryFilter, currentPage, pageSize)
-        : queryKeys.posts.list({ page: currentPage, size: pageSize, status: 'PUBLISHED' }),
+        ? [...queryKeys.posts.byCategory(categoryFilter, currentPage, pageSize), sortBy]
+        : [...queryKeys.posts.list({ page: currentPage, size: pageSize, status: 'PUBLISHED' }), sortBy],
     queryFn: () =>
       categoryFilter != null
-        ? getPostsByCategory(categoryFilter, currentPage, pageSize)
-        : getPostList(currentPage, pageSize, 'PUBLISHED'),
+        ? getPostsByCategory(categoryFilter, currentPage, pageSize, sortBy)
+        : getPostList(currentPage, pageSize, 'PUBLISHED', sortBy),
   });
 
   const posts = postsData?.content || [];
@@ -120,6 +121,28 @@ export default function PostListPage() {
           className="cc98-new-post-btn"
         >
           <i className="fa fa-pencil"></i> 发布新帖
+        </button>
+      </div>
+
+      {/* 4. 排序 Tab */}
+      <div className="cc98-sort-row">
+        <button
+          className={`cc98-sort-tab ${sortBy === 'latest' ? 'active' : ''}`}
+          onClick={() => { setSortBy('latest'); setCurrentPage(0); }}
+        >
+          最新发布
+        </button>
+        <button
+          className={`cc98-sort-tab ${sortBy === 'comments' ? 'active' : ''}`}
+          onClick={() => { setSortBy('comments'); setCurrentPage(0); }}
+        >
+          最多回复
+        </button>
+        <button
+          className={`cc98-sort-tab ${sortBy === 'hot' ? 'active' : ''}`}
+          onClick={() => { setSortBy('hot'); setCurrentPage(0); }}
+        >
+          热门推荐
         </button>
       </div>
 
@@ -252,6 +275,45 @@ export default function PostListPage() {
           background-color: var(--accent-color);
           color: #333;
           transform: translateY(-1px);
+        }
+
+        .cc98-sort-row {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          border-bottom: 1px solid var(--border-color);
+          padding-bottom: 0.5rem;
+        }
+        
+        .cc98-sort-tab {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          font-weight: 500;
+          cursor: pointer;
+          padding: 0.5rem 1rem;
+          font-size: 0.9rem;
+          transition: var(--cc98-transition);
+          position: relative;
+        }
+
+        .cc98-sort-tab:hover {
+          color: var(--primary-color);
+        }
+
+        .cc98-sort-tab.active {
+          color: var(--primary-color);
+          font-weight: bold;
+        }
+
+        .cc98-sort-tab.active::after {
+          content: '';
+          position: absolute;
+          bottom: -0.5rem;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background-color: var(--primary-color);
         }
       `}</style>
     </div>

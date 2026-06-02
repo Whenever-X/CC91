@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '../api/category';
@@ -26,10 +27,12 @@ export default function HomePage() {
     queryFn: getCategories,
   });
 
-  // 获取最新帖子
+  const [sortBy, setSortBy] = useState('latest');
+
+  // 获取最新/已排序帖子
   const { data: recentPostsData, isLoading: isPostsLoading } = useQuery({
-    queryKey: queryKeys.posts.list({ page: 0, size: 10 }),
-    queryFn: () => getPostList(0, 10),
+    queryKey: [...queryKeys.posts.list({ page: 0, size: 10 }), sortBy],
+    queryFn: () => getPostList(0, 10, undefined, sortBy),
   });
 
   // 获取更多帖子用于热门排序
@@ -85,8 +88,60 @@ export default function HomePage() {
 
           {/* 最新主题帖区域 */}
           <section>
-            <div className="cc98-section-title-external">
-              <i className="fa fa-clock-o" style={{ color: 'var(--cc98-alt-color-a)' }}></i> 最新帖子
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+              <div className="cc98-section-title-external" style={{ margin: 0, padding: 0 }}>
+                <i className="fa fa-clock-o" style={{ color: 'var(--cc98-alt-color-a)' }}></i> 最新帖子
+              </div>
+              <div className="cc98-sort-btn-group" style={{ display: 'flex', gap: '0.25rem' }}>
+                <button
+                  onClick={() => setSortBy('latest')}
+                  style={{
+                    background: sortBy === 'latest' ? 'var(--primary-color)' : 'transparent',
+                    color: sortBy === 'latest' ? 'white' : 'var(--text-muted)',
+                    border: '1px solid ' + (sortBy === 'latest' ? 'var(--primary-color)' : 'var(--border-color)'),
+                    borderRadius: 'var(--cc98-radius-pill)',
+                    padding: '0.2rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'var(--cc98-transition)'
+                  }}
+                >
+                  最新发布
+                </button>
+                <button
+                  onClick={() => setSortBy('comments')}
+                  style={{
+                    background: sortBy === 'comments' ? 'var(--primary-color)' : 'transparent',
+                    color: sortBy === 'comments' ? 'white' : 'var(--text-muted)',
+                    border: '1px solid ' + (sortBy === 'comments' ? 'var(--primary-color)' : 'var(--border-color)'),
+                    borderRadius: 'var(--cc98-radius-pill)',
+                    padding: '0.2rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'var(--cc98-transition)'
+                  }}
+                >
+                  最多回复
+                </button>
+                <button
+                  onClick={() => setSortBy('hot')}
+                  style={{
+                    background: sortBy === 'hot' ? 'var(--primary-color)' : 'transparent',
+                    color: sortBy === 'hot' ? 'white' : 'var(--text-muted)',
+                    border: '1px solid ' + (sortBy === 'hot' ? 'var(--primary-color)' : 'var(--border-color)'),
+                    borderRadius: 'var(--cc98-radius-pill)',
+                    padding: '0.2rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'var(--cc98-transition)'
+                  }}
+                >
+                  热门
+                </button>
+              </div>
             </div>
             <TopicTable posts={recentPosts} />
           </section>

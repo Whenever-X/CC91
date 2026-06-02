@@ -315,7 +315,7 @@ describe('PostListPage', () => {
       await user.click(page2Button);
 
       await waitFor(() => {
-        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10, 'PUBLISHED');
+        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10, 'PUBLISHED', 'latest');
       });
     });
 
@@ -351,7 +351,7 @@ describe('PostListPage', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10, 'PUBLISHED');
+        expect(postApi.getPostList).toHaveBeenCalledWith(1, 10, 'PUBLISHED', 'latest');
       });
     });
 
@@ -480,7 +480,7 @@ describe('PostListPage', () => {
       render(<PostListPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(postApi.getPostList).toHaveBeenCalledWith(0, 10, 'PUBLISHED');
+        expect(postApi.getPostList).toHaveBeenCalledWith(0, 10, 'PUBLISHED', 'latest');
       });
     });
 
@@ -506,7 +506,7 @@ describe('PostListPage', () => {
       await user.click(screen.getByText('技术交流'));
 
       await waitFor(() => {
-        expect(postApi.getPostsByCategory).toHaveBeenCalledWith(1, 0, 10);
+        expect(postApi.getPostsByCategory).toHaveBeenCalledWith(1, 0, 10, 'latest');
         expect(screen.getByText('Tech Post')).toBeInTheDocument();
       });
     });

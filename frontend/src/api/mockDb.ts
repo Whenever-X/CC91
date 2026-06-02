@@ -366,6 +366,7 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       const page = parseInt(params.page || '0');
       const size = parseInt(params.size || '10');
       const statusParam = params.status;
+      const sortParam = params.sort || 'latest';
 
       let filtered = state.posts;
       if (statusParam) {
@@ -375,17 +376,41 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         filtered = filtered.filter(p => p.status === 'APPROVED');
       }
       
-      // Sort: pinned first (our mock does not have pinned but we sort by id desc)
-      filtered = [...filtered].sort((a, b) => b.id - a.id);
+      // Sort logic
+      filtered = [...filtered].sort((a, b) => {
+        if (sortParam === 'comments') {
+          return (b.commentCount ?? 0) - (a.commentCount ?? 0);
+        } else if (sortParam === 'hot') {
+          const scoreA = a.viewCount * 0.3 + (a.commentCount ?? 0) * 0.7;
+          const scoreB = b.viewCount * 0.3 + (b.commentCount ?? 0) * 0.7;
+          return scoreB - scoreA;
+        } else {
+          return b.id - a.id;
+        }
+      });
+      
       responseData = paginateArray(filtered, page, size);
     }
     else if (url.match(/^\/posts\/by-category\/\d+$/) && method === 'GET') {
       const catId = parseInt(url.split('/').pop() || '0');
       const page = parseInt(params.page || '0');
       const size = parseInt(params.size || '10');
-      const filtered = state.posts
-        .filter(p => p.categoryId === catId && p.status === 'APPROVED')
-        .sort((a, b) => b.id - a.id);
+      const sortParam = params.sort || 'latest';
+      
+      let filtered = state.posts.filter(p => p.categoryId === catId && p.status === 'APPROVED');
+      
+      // Sort logic
+      filtered = [...filtered].sort((a, b) => {
+        if (sortParam === 'comments') {
+          return (b.commentCount ?? 0) - (a.commentCount ?? 0);
+        } else if (sortParam === 'hot') {
+          const scoreA = a.viewCount * 0.3 + (a.commentCount ?? 0) * 0.7;
+          const scoreB = b.viewCount * 0.3 + (b.commentCount ?? 0) * 0.7;
+          return scoreB - scoreA;
+        } else {
+          return b.id - a.id;
+        }
+      });
       
       responseData = paginateArray(filtered, page, size);
     }
