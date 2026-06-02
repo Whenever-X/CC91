@@ -424,8 +424,8 @@ describe('PostListPage', () => {
 
   describe('版块筛选', () => {
     const mockCategories = [
-      { id: 1, name: '技术交流', description: 'tech', sortOrder: 1, createdAt: '2024-01-01T00:00:00' },
-      { id: 2, name: '生活杂谈', description: 'life', sortOrder: 2, createdAt: '2024-01-01T00:00:00' },
+      { id: 1, name: '技术交流', description: 'tech', sortOrder: 1, createdAt: '2024-01-01T00:00:00', postCount: 0, todayPostCount: 0 },
+      { id: 2, name: '生活杂谈', description: 'life', sortOrder: 2, createdAt: '2024-01-01T00:00:00', postCount: 0, todayPostCount: 0 },
     ];
 
     const mockCategoryPosts = [

@@ -265,8 +265,7 @@ describe('CreatePostPage', () => {
 
       await waitFor(() => {
         expect(postApi.createPost).toHaveBeenCalledWith(
-          { title: 'Test Title', content: 'Test content', categoryId: 1, status: 'PUBLISHED' },
-          expect.objectContaining({})
+          { title: 'Test Title', content: 'Test content', categoryId: 1, status: 'PUBLISHED' }
         );
       });
 
@@ -295,8 +294,7 @@ describe('CreatePostPage', () => {
 
       await waitFor(() => {
         expect(postApi.createPost).toHaveBeenCalledWith(
-          { title: 'Test Title', content: 'Test content', categoryId: 1, status: 'PUBLISHED' },
-          expect.objectContaining({})
+          { title: 'Test Title', content: 'Test content', categoryId: 1, status: 'PUBLISHED' }
         );
       });
     });
@@ -434,7 +432,6 @@ describe('CreatePostPage', () => {
     beforeEach(setupAuth);
 
     it('标题输入应该限制最多200字符', async () => {
-      const user = userEvent.setup();
       render(<CreatePostPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {

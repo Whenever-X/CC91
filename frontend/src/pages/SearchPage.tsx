@@ -5,8 +5,6 @@ import { searchPosts } from '../api/post';
 import { queryKeys } from '../lib/queryKeys';
 import { useDebounce } from '../hooks';
 import Breadcrumbs from '../components/Breadcrumbs';
-import TopicTable from '../components/TopicTable';
-import Pagination from '../components/Pagination';
 
 /**
  * CC98 风格搜索页面组件

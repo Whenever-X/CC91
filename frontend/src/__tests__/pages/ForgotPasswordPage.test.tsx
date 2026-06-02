@@ -144,7 +144,6 @@ describe('ForgotPasswordPage', () => {
 
   describe('Validation', () => {
     it('should require email input', async () => {
-      const user = userEvent.setup();
       render(<ForgotPasswordPage />, { wrapper: createWrapper() });
 
       const emailInput = screen.getByLabelText('邮箱');
@@ -152,7 +151,6 @@ describe('ForgotPasswordPage', () => {
     });
 
     it('should require valid email format', async () => {
-      const user = userEvent.setup();
       render(<ForgotPasswordPage />, { wrapper: createWrapper() });
 
       const emailInput = screen.getByLabelText('邮箱');

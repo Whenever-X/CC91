@@ -18,14 +18,12 @@ export default function ChangePasswordPage() {
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || '密码修改失败，请重试');
-      setSuccess('');
     },
   });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (newPassword.length < 6) {
       setError('新密码长度不能少于 6 位');

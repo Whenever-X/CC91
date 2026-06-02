@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { getMyPosts } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
-import TopicTable from '../components/TopicTable';
 
 /**
  * CC98 风格我的帖子页面 - 展示当前用户全部帖子
