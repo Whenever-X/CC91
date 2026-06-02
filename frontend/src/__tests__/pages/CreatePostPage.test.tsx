@@ -5,10 +5,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CreatePostPage from '../../pages/CreatePostPage';
 import * as postApi from '../../api/post';
+import * as uploadApi from '../../api/upload';
 import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
 vi.mock('../../api/post');
+vi.mock('../../api/upload', () => ({
+  uploadImage: vi.fn(),
+}));
 vi.mock('../../api/category', () => ({
   getCategories: vi.fn().mockResolvedValue([
     { id: 1, name: 'Tech', description: 'Technology discussions', sortOrder: 1, createdAt: '2024-01-01T10:00:00' },
@@ -440,6 +444,35 @@ describe('CreatePostPage', () => {
 
       const titleInput = screen.getByPlaceholderText('请输入帖子标题') as HTMLInputElement;
       expect(titleInput.maxLength).toBe(200);
+    });
+  });
+
+  describe('图片上传', () => {
+    beforeEach(setupAuth);
+
+    it('选择文件并调用上传后，应该将 Markdown 图片语法插入正文', async () => {
+      const user = userEvent.setup();
+      vi.mocked(uploadApi.uploadImage).mockResolvedValue({ url: 'http://mockurl.com/img.png' });
+
+      const { container } = render(<CreatePostPage />, { wrapper: createWrapper() });
+
+      await waitForCategoriesLoaded();
+
+      const uploadButton = screen.getByRole('button', { name: '上传图片' });
+      expect(uploadButton).toBeInTheDocument();
+
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+      expect(fileInput).toBeInTheDocument();
+
+      const testFile = new File(['dummy content'], 'test.png', { type: 'image/png' });
+      await user.upload(fileInput, testFile);
+
+      await waitFor(() => {
+        expect(uploadApi.uploadImage).toHaveBeenCalledWith(testFile);
+      });
+
+      const contentTextarea = screen.getByPlaceholderText('请输入帖子内容...') as HTMLTextAreaElement;
+      expect(contentTextarea.value).toContain('![image](http://mockurl.com/img.png)');
     });
   });
 });

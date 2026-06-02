@@ -5,10 +5,14 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import EditPostPage from '../../pages/EditPostPage';
 import * as postApi from '../../api/post';
+import * as uploadApi from '../../api/upload';
 import { AuthProvider } from '../../context/AuthContext';
 
 // Mock the API
 vi.mock('../../api/post');
+vi.mock('../../api/upload', () => ({
+  uploadImage: vi.fn(),
+}));
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -426,6 +430,41 @@ describe('EditPostPage', () => {
         const cancelButton = screen.getByRole('button', { name: '取消' });
         expect(cancelButton).toBeDisabled();
       });
+    });
+  });
+
+  describe('图片上传', () => {
+    beforeEach(() => {
+      localStorage.setItem('access_token', 'test-token');
+      localStorage.setItem('user', JSON.stringify({ username: 'testuser', email: 'test@test.com' }));
+    });
+
+    it('选择文件并调用上传后，应该将 Markdown 图片语法插入正文', async () => {
+      const user = userEvent.setup();
+      vi.mocked(postApi.getPostById).mockResolvedValue(mockPost);
+      vi.mocked(uploadApi.uploadImage).mockResolvedValue({ url: 'http://mockurl.com/img.png' });
+
+      const { container } = renderWithAuth('testuser');
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '上传图片' })).toBeInTheDocument();
+      });
+
+      const uploadButton = screen.getByRole('button', { name: '上传图片' });
+      expect(uploadButton).toBeInTheDocument();
+
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+      expect(fileInput).toBeInTheDocument();
+
+      const testFile = new File(['dummy content'], 'test.png', { type: 'image/png' });
+      await user.upload(fileInput, testFile);
+
+      await waitFor(() => {
+        expect(uploadApi.uploadImage).toHaveBeenCalledWith(testFile);
+      });
+
+      const contentTextarea = screen.getByPlaceholderText('请输入帖子内容...') as HTMLTextAreaElement;
+      expect(contentTextarea.value).toContain('![image](http://mockurl.com/img.png)');
     });
   });
 });
