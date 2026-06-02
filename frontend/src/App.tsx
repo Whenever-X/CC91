@@ -13,6 +13,7 @@ import DashboardPage from './pages/DashboardPage';
 import MyPostsPage from './pages/MyPostsPage';
 import MyCommentsPage from './pages/MyCommentsPage';
 import MyDraftsPage from './pages/MyDraftsPage';
+import MyBookmarksPage from './pages/MyBookmarksPage';
 import ProfilePage from './pages/ProfilePage';
 import ProfileEditPage from './pages/ProfileEditPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
@@ -97,6 +98,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyDraftsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/bookmarks"
+                element={
+                  <ProtectedRoute>
+                    <MyBookmarksPage />
                   </ProtectedRoute>
                 }
               />

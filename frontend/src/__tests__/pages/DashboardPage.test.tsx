@@ -7,9 +7,11 @@ import { AuthProvider } from '../../context/AuthContext';
 import DashboardPage from '../../pages/DashboardPage';
 import * as notificationApi from '../../api/notification';
 import * as userApi from '../../api/user';
+import * as bookmarkApi from '../../api/bookmark';
 
 vi.mock('../../api/notification');
 vi.mock('../../api/user');
+vi.mock('../../api/bookmark');
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => ({
@@ -47,6 +49,7 @@ describe('DashboardPage', () => {
   it('应该渲染我的帖子与我的评论列表', async () => {
     vi.mocked(notificationApi.getNotifications).mockResolvedValue([]);
     vi.mocked(notificationApi.getUnreadCount).mockResolvedValue(0);
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([]);
 
     vi.mocked(userApi.getMyPosts).mockResolvedValue([
       {
@@ -90,6 +93,7 @@ describe('DashboardPage', () => {
     vi.mocked(notificationApi.getNotifications).mockResolvedValue([]);
     vi.mocked(notificationApi.getUnreadCount).mockResolvedValue(0);
     vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([]);
     vi.mocked(userApi.getMyComments).mockResolvedValue([
       {
         id: 99,
@@ -117,6 +121,7 @@ describe('DashboardPage', () => {
     vi.mocked(notificationApi.getUnreadCount).mockResolvedValue(0);
     vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
     vi.mocked(userApi.getMyComments).mockResolvedValue([]);
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([]);
 
     render(<DashboardPage />, { wrapper: createWrapper() });
 
@@ -133,6 +138,7 @@ describe('DashboardPage', () => {
     vi.mocked(notificationApi.getUnreadCount).mockResolvedValue(0);
     vi.mocked(userApi.getMyPosts).mockResolvedValue([]);
     vi.mocked(userApi.getMyComments).mockResolvedValue([]);
+    vi.mocked(bookmarkApi.getMyBookmarks).mockResolvedValue([]);
 
     render(<DashboardPage />, { wrapper: createWrapper() });
 

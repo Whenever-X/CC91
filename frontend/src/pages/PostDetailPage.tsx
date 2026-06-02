@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getPostById, deletePost } from '../api/post';
+import { togglePostLike } from '../api/like';
+import { togglePostBookmark } from '../api/bookmark';
+import { submitReport } from '../api/report';
 import CommentSection from '../components/CommentSection';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PostCard from '../components/PostCard';
+import ReportDialog from '../components/ReportDialog';
 
 /**
  * CC98 风格帖子详情/阅读楼层页面
@@ -19,14 +23,25 @@ export default function PostDetailPage() {
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  const [isFavorited, setIsFavorited] = useState(false);
 
   const postId = id ? parseInt(id, 10) : 0;
+
+  const lastPostIdRef = useRef<number>(0);
+  const hasLoadedRef = useRef(false);
+
+  if (lastPostIdRef.current !== postId) {
+    hasLoadedRef.current = false;
+    lastPostIdRef.current = postId;
+  }
 
   // 获取帖子详情
   const { data: post, isLoading, error } = useQuery({
     queryKey: queryKeys.posts.detail(postId),
-    queryFn: () => getPostById(postId),
+    queryFn: () => {
+      const increaseView = !hasLoadedRef.current;
+      hasLoadedRef.current = true;
+      return getPostById(postId, increaseView);
+    },
     enabled: postId > 0,
   });
 
@@ -43,6 +58,66 @@ export default function PostDetailPage() {
     },
   });
 
+  // 点赞 mutation
+  const likeMutation = useMutation({
+    mutationFn: togglePostLike,
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.posts.detail(postId), (oldPost: any) => {
+        if (!oldPost) return oldPost;
+        return {
+          ...oldPost,
+          likeCount: data.likeCount,
+          isLikedByCurrentUser: data.isLiked,
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
+    },
+  });
+
+  // 收藏 mutation
+  const bookmarkMutation = useMutation({
+    mutationFn: togglePostBookmark,
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.posts.detail(postId), (oldPost: any) => {
+        if (!oldPost) return oldPost;
+        return {
+          ...oldPost,
+          isBookmarkedByCurrentUser: data.isBookmarked,
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ['users', 'me', 'bookmarks'] });
+    },
+  });
+
+  // 举报 mutation
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const submitReportMutation = useMutation({
+    mutationFn: (data: { contentType: 'POST' | 'COMMENT'; contentId: number; reason: string; description?: string }) =>
+      submitReport(data),
+    onSuccess: () => {
+      alert('举报提交成功，感谢您的配合！');
+      setIsReportOpen(false);
+    },
+  });
+
+  const handleReportPost = () => {
+    if (!currentUser) {
+      alert('请先登录！');
+      navigate('/login');
+      return;
+    }
+    setIsReportOpen(true);
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    await submitReportMutation.mutateAsync({
+      contentType: 'POST',
+      contentId: postId,
+      reason,
+      description
+    });
+  };
+
   const handleDelete = async () => {
     if (!post) return;
     if (!confirm('确定要删除这篇帖子吗？此操作不可恢复。')) return;
@@ -56,10 +131,24 @@ export default function PostDetailPage() {
   };
 
   const handleFavoriteToggle = () => {
-    setIsFavorited(!isFavorited);
-    alert(isFavorited ? '已取消收藏此贴' : '已收藏此贴到您的个人中心');
+    if (!currentUser) {
+      alert('请先登录！');
+      navigate('/login');
+      return;
+    }
+    bookmarkMutation.mutate(postId);
   };
 
+  const handleLikeToggle = () => {
+    if (!currentUser) {
+      alert('请先登录！');
+      navigate('/login');
+      return;
+    }
+    likeMutation.mutate(postId);
+  };
+
+  const isFavorited = !!post?.isBookmarkedByCurrentUser;
   const isAuthor = currentUser?.username === post?.authorUsername;
 
   if (isLoading) {
@@ -159,6 +248,12 @@ export default function PostDetailPage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           isDeleting={isDeleting}
+          likeCount={post.likeCount}
+          isLikedByCurrentUser={post.isLikedByCurrentUser}
+          isBookmarkedByCurrentUser={post.isBookmarkedByCurrentUser}
+          onToggleLike={handleLikeToggle}
+          onToggleBookmark={handleFavoriteToggle}
+          onReport={handleReportPost}
         />
       </div>
 
@@ -167,6 +262,15 @@ export default function PostDetailPage() {
         postId={postId}
         commentCount={post.commentCount}
         topicAuthorUsername={post.authorUsername}
+      />
+
+      {/* 举报弹窗 */}
+      <ReportDialog
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        onSubmit={handleReportSubmit}
+        isSubmitting={submitReportMutation.isPending}
+        contentType="POST"
       />
 
       <style>{`

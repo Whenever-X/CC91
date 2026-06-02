@@ -4,10 +4,11 @@ import {
   adminGetPosts, adminUpdatePostStatus, adminDeletePost,
   adminGetComments, adminDeleteComment
 } from '../../api/admin';
+import { adminGetReports, adminHandleReport } from '../../api/report';
 import ErrorMessage from '../../components/ErrorMessage';
 import { queryKeys } from '../../lib/queryKeys';
 
-type TabType = 'posts' | 'comments';
+type TabType = 'posts' | 'comments' | 'reports';
 
 /**
  * 内容审核页面 - 帖子与评论审核
@@ -31,6 +32,13 @@ export default function ContentModeration() {
     queryKey: ['admin', 'comments'],
     queryFn: adminGetComments,
     enabled: activeTab === 'comments',
+  });
+
+  // 举报列表
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({
+    queryKey: ['admin', 'reports'],
+    queryFn: adminGetReports,
+    enabled: activeTab === 'reports',
   });
 
   // 更新帖子状态
@@ -69,6 +77,39 @@ export default function ContentModeration() {
       setError(err.response?.data?.message || '删除失败');
     },
   });
+
+  // 处理举报
+  const handleReportMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'RESOLVED' | 'DISMISSED' }) =>
+      adminHandleReport(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+      setSuccess('举报处理成功');
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '处理失败');
+    },
+  });
+
+  const handleResolveReport = async (report: any) => {
+    if (!confirm(`确定要处理此举报并删除该内容吗？此操作不可恢复。`)) return;
+    
+    try {
+      if (report.contentType === 'POST') {
+        await deletePostMutation.mutateAsync(report.contentId);
+      } else {
+        await deleteCommentMutation.mutateAsync(report.contentId);
+      }
+      await handleReportMutation.mutateAsync({ id: report.id, status: 'RESOLVED' });
+    } catch (err: any) {
+      setError(err.response?.data?.message || '操作失败');
+    }
+  };
+
+  const handleDismissReport = (reportId: number) => {
+    if (!confirm('确定要忽略该举报吗？')) return;
+    handleReportMutation.mutate({ id: reportId, status: 'DISMISSED' });
+  };
 
   const handleStatusChange = (postId: number, newStatus: string) => {
     statusMutation.mutate({ postId, status: newStatus });
@@ -121,6 +162,12 @@ export default function ContentModeration() {
             onClick={() => { setActiveTab('comments'); clearMessages(); }}
           >
             评论审核
+          </button>
+          <button
+            className={`btn ${activeTab === 'reports' ? 'btn-primary' : ''}`}
+            onClick={() => { setActiveTab('reports'); clearMessages(); }}
+          >
+            举报队列
           </button>
         </div>
       </div>
@@ -308,6 +355,127 @@ export default function ContentModeration() {
                             >
                               删除
                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 举报队列 */}
+      {activeTab === 'reports' && (
+        <>
+          {reportsLoading ? (
+            <div className="loading-container">
+              <div className="spinner spinner-lg"></div>
+              <span>加载中...</span>
+            </div>
+          ) : (
+            <div className="table-container">
+              <div className="card">
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }}>共 {reports.length} 条举报记录</p>
+                {reports.length === 0 ? (
+                  <div className="empty-state">暂无举报记录</div>
+                ) : (
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>被举报内容</th>
+                        <th>类型</th>
+                        <th>举报人</th>
+                        <th>举报原因/详情</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reports.map((report: any) => (
+                        <tr key={report.id}>
+                          <td style={{ maxWidth: '300px' }}>
+                            {report.contentType === 'POST' ? (
+                              <div>
+                                <div style={{ fontWeight: '500' }}>
+                                  主题：
+                                  <a href={`/posts/${report.contentId}`} target="_blank" rel="noopener noreferrer">
+                                    {report.contentTitle}
+                                  </a>
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  内容：{report.contentBody}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <div style={{ fontWeight: '500' }}>
+                                  评论所属帖：
+                                  <a href={`/posts/${report.contentId}`} target="_blank" rel="noopener noreferrer">
+                                    {report.contentTitle || '未知帖'}
+                                  </a>
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  评论内容：{report.contentBody}
+                                </div>
+                              </div>
+                            )}
+                            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                              举报时间：{new Date(report.createdAt).toLocaleString('zh-CN')}
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${report.contentType === 'POST' ? 'badge-info' : 'badge-warning'}`} style={{
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '4px',
+                              fontSize: '0.8rem',
+                              backgroundColor: report.contentType === 'POST' ? '#3498db' : '#e67e22',
+                              color: 'white'
+                            }}>
+                              {report.contentType === 'POST' ? '帖子' : '评论'}
+                            </span>
+                          </td>
+                          <td>{report.reporterUsername}</td>
+                          <td>
+                            <div style={{ fontWeight: 'bold' }}>{report.reason}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{report.description || '无详细描述'}</div>
+                          </td>
+                          <td>
+                            <span style={{
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '4px',
+                              fontSize: '0.82rem',
+                              fontWeight: 'bold',
+                              color: 'white',
+                              backgroundColor: report.status === 'PENDING' ? '#f1c40f' : report.status === 'RESOLVED' ? '#2ecc71' : '#95a5a6'
+                            }}>
+                              {report.status === 'PENDING' ? '待审核' : report.status === 'RESOLVED' ? '已处理' : '已忽略'}
+                            </span>
+                          </td>
+                          <td>
+                            {report.status === 'PENDING' ? (
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                  className="btn btn-danger btn-sm"
+                                  onClick={() => handleResolveReport(report)}
+                                  disabled={handleReportMutation.isPending}
+                                >
+                                  删除内容
+                                </button>
+                                <button
+                                  className="btn btn-sm"
+                                  onClick={() => handleDismissReport(report.id)}
+                                  disabled={handleReportMutation.isPending}
+                                  style={{ border: '1px solid var(--color-border)' }}
+                                >
+                                  忽略
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>已归档</span>
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -18,6 +18,21 @@ interface PostCardProps {
   isDeleting?: boolean;
   currentUserCanModify?: boolean;
   children?: React.ReactNode;
+  
+  // New props for Likes and Bookmarks
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
+  isBookmarkedByCurrentUser?: boolean;
+  onToggleLike?: () => void;
+  onToggleBookmark?: () => void;
+
+  // New props for Editing and Reporting
+  isEditing?: boolean;
+  editContent?: string;
+  onEditContentChange?: (val: string) => void;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
+  onReport?: () => void;
 }
 
 // Generate deterministic hash code for user stats
@@ -46,7 +61,18 @@ export default function PostCard({
   onEdit,
   isDeleting = false,
   currentUserCanModify = false,
-  children
+  children,
+  likeCount,
+  isLikedByCurrentUser,
+  isBookmarkedByCurrentUser,
+  onToggleLike,
+  onToggleBookmark,
+  isEditing = false,
+  editContent = '',
+  onEditContentChange,
+  onSaveEdit,
+  onCancelEdit,
+  onReport
 }: PostCardProps) {
   // Deterministic user stats based on username hash
   const hash = hashCode(authorUsername || 'anon');
@@ -58,21 +84,29 @@ export default function PostCard({
   const signature = hash % 2 === 0 ? '行百里者半九十，心之所向素履以往。' : '浙大求是人，纵横天地间！ 🌟';
 
   // Support local likes/dislikes since the real backend doesn't save them
-  const [likes, setLikes] = useState((hash % 12) + 1);
+  const [localLikes, setLocalLikes] = useState((hash % 12) + 1);
   const [dislikes, setDislikes] = useState(hash % 3);
-  const [liked, setLiked] = useState(false);
+  const [localLiked, setLocalLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
 
+  const hasLikeApi = onToggleLike !== undefined;
+  const likes = hasLikeApi ? (likeCount ?? 0) : localLikes;
+  const liked = hasLikeApi ? !!isLikedByCurrentUser : localLiked;
+
   const handleLike = () => {
-    if (liked) {
-      setLikes(l => l - 1);
-      setLiked(false);
+    if (hasLikeApi) {
+      onToggleLike?.();
     } else {
-      setLikes(l => l + 1);
-      setLiked(true);
-      if (disliked) {
-        setDislikes(d => d - 1);
-        setDisliked(false);
+      if (localLiked) {
+        setLocalLikes(l => l - 1);
+        setLocalLiked(false);
+      } else {
+        setLocalLikes(l => l + 1);
+        setLocalLiked(true);
+        if (disliked) {
+          setDislikes(d => d - 1);
+          setDisliked(false);
+        }
       }
     }
   };
@@ -85,8 +119,12 @@ export default function PostCard({
       setDislikes(d => d + 1);
       setDisliked(true);
       if (liked) {
-        setLikes(l => l - 1);
-        setLiked(false);
+        if (hasLikeApi) {
+          onToggleLike?.();
+        } else {
+          setLocalLikes(l => l - 1);
+          setLocalLiked(false);
+        }
       }
     }
   };
@@ -211,10 +249,50 @@ export default function PostCard({
 
         {/* Body Content */}
         <div className="cc98-post-body-container">
-          <div
-            className="cc98-post-body"
-            dangerouslySetInnerHTML={parsePostContent(content)}
-          />
+          {isEditing ? (
+            <div style={{ marginTop: '0.5rem', width: '100%' }}>
+              <textarea
+                value={editContent}
+                onChange={(e) => onEditContentChange?.(e.target.value)}
+                className="cc98-form-control"
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: '0.75rem',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--card-bg)',
+                  color: 'var(--text-main)',
+                  borderRadius: 'var(--cc98-radius)',
+                  fontFamily: 'inherit',
+                  fontSize: '0.95rem',
+                  resize: 'vertical',
+                  marginBottom: '0.75rem'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={onSaveEdit}
+                  className="cc98-edit-save-btn"
+                  disabled={!editContent?.trim()}
+                >
+                  保存
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancelEdit}
+                  className="cc98-edit-cancel-btn"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="cc98-post-body"
+              dangerouslySetInnerHTML={parsePostContent(content)}
+            />
+          )}
         </div>
 
         {/* Nested Comments/Replies Slot */}
@@ -231,49 +309,104 @@ export default function PostCard({
         )}
 
         {/* Actions (Like, Dislike, Quote Reply, Edit/Delete if authorized) */}
-        <div className="cc98-post-actions">
-          {currentUserCanModify && (
-            <div style={{ marginRight: 'auto', display: 'flex', gap: '0.75rem' }}>
-              {onEdit && (
-                <button onClick={onEdit} className="cc98-action-btn-link edit">
-                  <i className="fa fa-pencil-square-o"></i> 编辑
-                </button>
-              )}
-              {onDelete && (
-                <button onClick={onDelete} disabled={isDeleting} className="cc98-action-btn-link delete">
-                  <i className="fa fa-trash-o"></i> {isDeleting ? '删除中...' : '删除'}
-                </button>
-              )}
-            </div>
-          )}
+        {!isEditing && (
+          <div className="cc98-post-actions">
+            {currentUserCanModify && (
+              <div style={{ marginRight: 'auto', display: 'flex', gap: '0.75rem' }}>
+                {onEdit && (
+                  <button onClick={onEdit} className="cc98-action-btn-link edit">
+                    <i className="fa fa-pencil-square-o"></i> 编辑
+                  </button>
+                )}
+                {onDelete && (
+                  <button onClick={onDelete} disabled={isDeleting} className="cc98-action-btn-link delete">
+                    <i className="fa fa-trash-o"></i> {isDeleting ? '删除中...' : '删除'}
+                  </button>
+                )}
+              </div>
+            )}
 
-          <div
-            className={`cc98-action-item ${liked ? 'active liked' : ''}`}
-            onClick={handleLike}
-            title="赞同此楼发言"
-          >
-            <i className={`fa ${liked ? 'fa-thumbs-up' : 'fa-thumbs-o-up'}`}></i> 赞 ({likes})
-          </div>
-          <div
-            className={`cc98-action-item ${disliked ? 'active disliked' : ''}`}
-            onClick={handleDislike}
-            title="不赞同此楼发言"
-          >
-            <i className={`fa ${disliked ? 'fa-thumbs-down' : 'fa-thumbs-o-down'}`}></i> 踩 ({dislikes})
-          </div>
-          {onQuote && (
             <div
-              className="cc98-action-item"
-              onClick={() => onQuote(authorUsername, content)}
-              title="引用本楼内容发表回复"
+              className={`cc98-action-item ${liked ? 'active liked' : ''}`}
+              onClick={handleLike}
+              title="赞同此楼发言"
             >
-              <i className="fa fa-reply"></i> 引用
+              <i className={`fa ${liked ? 'fa-thumbs-up' : 'fa-thumbs-o-up'}`}></i> 赞 ({likes})
             </div>
-          )}
-        </div>
+            <div
+              className={`cc98-action-item ${disliked ? 'active disliked' : ''}`}
+              onClick={handleDislike}
+              title="不赞同此楼发言"
+            >
+              <i className={`fa ${disliked ? 'fa-thumbs-down' : 'fa-thumbs-o-down'}`}></i> 踩 ({dislikes})
+            </div>
+            {onToggleBookmark && (
+              <div
+                className={`cc98-action-item ${isBookmarkedByCurrentUser ? 'active favorited' : ''}`}
+                onClick={onToggleBookmark}
+                title={isBookmarkedByCurrentUser ? '从收藏夹中移除' : '收藏此贴'}
+              >
+                <i className={`fa ${isBookmarkedByCurrentUser ? 'fa-star' : 'fa-star-o'}`}></i> {isBookmarkedByCurrentUser ? '已收藏' : '收藏'}
+              </div>
+            )}
+            {onQuote && (
+              <div
+                className="cc98-action-item"
+                onClick={() => onQuote(authorUsername, content)}
+                title="引用本楼内容发表回复"
+              >
+                <i className="fa fa-reply"></i> 引用
+              </div>
+            )}
+            {onReport && (
+              <div
+                className="cc98-action-item report-btn"
+                onClick={onReport}
+                title="举报本楼发言"
+                style={{ color: '#fb6165' }}
+              >
+                <i className="fa fa-flag"></i> 举报
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <style>{`
+        .cc98-edit-save-btn {
+          background-color: var(--primary-color);
+          color: white;
+          border: none;
+          padding: 0.4rem 1.25rem;
+          border-radius: var(--cc98-radius-pill);
+          font-weight: bold;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: var(--cc98-transition);
+        }
+        .cc98-edit-save-btn:hover:not(:disabled) {
+          background-color: var(--accent-color);
+          color: #333;
+        }
+        .cc98-edit-save-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .cc98-edit-cancel-btn {
+          background-color: transparent;
+          color: var(--text-muted);
+          border: 1px solid var(--border-color);
+          padding: 0.4rem 1.25rem;
+          border-radius: var(--cc98-radius-pill);
+          font-weight: bold;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: var(--cc98-transition);
+        }
+        .cc98-edit-cancel-btn:hover {
+          background-color: var(--quote-bg);
+          color: var(--text-main);
+        }
         .cc98-post-card {
           display: flex;
           border: 1px solid var(--border-color);
@@ -551,6 +684,10 @@ export default function PostCard({
 
         .cc98-action-item.disliked {
           color: #fb6165;
+        }
+
+        .cc98-action-item.favorited {
+          color: var(--accent-color);
         }
 
         .cc98-post-quote {

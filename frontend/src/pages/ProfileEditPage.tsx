@@ -16,8 +16,7 @@ export default function ProfileEditPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [website, setWebsite] = useState('');
@@ -39,25 +38,12 @@ export default function ProfileEditPage() {
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      let finalAvatarUrl = currentAvatarUrl;
-      let uploadedUrl: string | null = null;
-      if (selectedFile) {
-        uploadedUrl = await uploadAvatar(selectedFile);
-        finalAvatarUrl = uploadedUrl;
-      }
-      try {
-        return await updateProfile({
-          avatarUrl: finalAvatarUrl || undefined,
-          bio: bio.trim() || undefined,
-          location: location.trim() || undefined,
-          website: website.trim() || undefined,
-        });
-      } catch (err) {
-        // Profile update failed — uploaded file is orphaned, but we can't
-        // reliably delete it from the frontend. Best-effort: leave cleanup
-        // to a future garbage-collection mechanism or admin intervention.
-        throw err;
-      }
+      return await updateProfile({
+        avatarUrl: currentAvatarUrl || undefined,
+        bio: bio.trim() || undefined,
+        location: location.trim() || undefined,
+        website: website.trim() || undefined,
+      });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
@@ -75,7 +61,7 @@ export default function ProfileEditPage() {
     },
   });
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -91,21 +77,17 @@ export default function ProfileEditPage() {
       return;
     }
 
-    setSelectedFile(file);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setPreviewUrl(URL.createObjectURL(file));
-  };
-
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    try {
+      setIsUploading(true);
+      const url = await uploadAvatar(file);
+      setCurrentAvatarUrl(url);
+    } catch (err: any) {
+      setError(err.response?.data?.message || '图片上传失败，请重试');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -116,15 +98,10 @@ export default function ProfileEditPage() {
   };
 
   const handleCancel = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
     if (user) {
       navigate(`/profile/${user.username}`);
     }
   };
-
-  const displayAvatarUrl = previewUrl || (currentAvatarUrl || undefined);
 
   if (isLoading) {
     return (
@@ -145,6 +122,12 @@ export default function ProfileEditPage() {
         ]}
       />
 
+      <style>{`
+        .cc98-avatar-upload-area:hover .avatar-hover-overlay {
+          opacity: 1 !important;
+        }
+      `}</style>
+
       <div className="cc98-editor-card">
         <div className="cc98-editor-title-bar">
           <i className="fa fa-user-circle-o"></i> 修改个人名片设置
@@ -161,27 +144,70 @@ export default function ProfileEditPage() {
           <div className="cc98-form-group">
             <label>头像</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-              <div style={{
-                width: '90px',
-                height: '90px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                border: '2px solid var(--border-color)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                flexShrink: 0,
-                background: 'var(--bg-secondary, #f0f0f0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {displayAvatarUrl ? (
+              <div 
+                onClick={() => !isUploading && fileInputRef.current?.click()}
+                className="cc98-avatar-upload-area"
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  border: '2px solid var(--border-color)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  flexShrink: 0,
+                  background: 'var(--bg-secondary, #f0f0f0)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: isUploading ? 'not-allowed' : 'pointer',
+                  position: 'relative',
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                {currentAvatarUrl ? (
                   <img
-                    src={displayAvatarUrl}
+                    src={currentAvatarUrl}
                     alt="头像预览"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isUploading ? 0.5 : 1 }}
                   />
                 ) : (
-                  <i className="fa fa-user" style={{ fontSize: '2rem', color: 'var(--text-muted)' }}></i>
+                  <i className="fa fa-user" style={{ fontSize: '2rem', color: 'var(--text-muted)', opacity: isUploading ? 0.5 : 1 }}></i>
+                )}
+                {isUploading && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0,0,0,0.3)',
+                    color: 'white'
+                  }}>
+                    <i className="fa fa-spinner fa-spin" style={{ fontSize: '1.5rem' }}></i>
+                  </div>
+                )}
+                {!isUploading && (
+                  <div className="avatar-hover-overlay" style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
+                    fontSize: '0.78rem',
+                    fontWeight: 'bold'
+                  }}>
+                    修改头像
+                  </div>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -197,21 +223,10 @@ export default function ProfileEditPage() {
                   className="cc98-btn btn-publish"
                   style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={updateMutation.isPending}
+                  disabled={isUploading}
                 >
                   <i className="fa fa-upload"></i> 选择图片
                 </button>
-                {selectedFile && (
-                  <button
-                    type="button"
-                    className="cc98-btn btn-cancel"
-                    style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-                    onClick={handleRemoveFile}
-                    disabled={updateMutation.isPending}
-                  >
-                    取消选择
-                  </button>
-                )}
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   支持 JPG、PNG、WebP，不超过 2MB
                 </small>

@@ -8,6 +8,7 @@ import type { Notification } from './notification';
 import type { Announcement } from './announcement';
 
 const STORAGE_KEY = 'cc91_mock_db';
+const viewedPostIds = new Set<number>();
 
 interface MockDbState {
   categories: Category[];
@@ -17,6 +18,9 @@ interface MockDbState {
   announcements: Announcement[];
   users: AdminUser[];
   profiles: { [username: string]: UserProfile };
+  likes?: { postId: number; userId: number }[];
+  bookmarks?: { postId: number; userId: number }[];
+  reports?: any[];
   lastIds: {
     category: number;
     post: number;
@@ -24,6 +28,7 @@ interface MockDbState {
     notification: number;
     announcement: number;
     user: number;
+    report?: number;
   };
 }
 
@@ -86,31 +91,52 @@ const INITIAL_STATE: MockDbState = {
     user: { username: 'user', email: 'user@cc98.org', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150', bio: '一只普通的前端菜鸟，热爱生活。', location: '浙大玉泉校区', website: null, createdAt: '2026-05-18T07:00:00.000Z' },
     editor: { username: 'editor', email: 'editor@cc98.org', avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150', bio: '内容编辑，分享好文章。', location: '浙大西溪校区', website: null, createdAt: '2026-05-18T07:30:00.000Z' }
   },
-  lastIds: {
-    category: 4,
-    post: 8,
-    comment: 9,
-    notification: 2,
-    announcement: 3,
-    user: 3
-  }
-};
+    reports: [
+      {
+        id: 1,
+        reporterId: 2,
+        reporterUsername: 'user',
+        contentType: 'POST',
+        contentId: 8,
+        contentTitle: '关于对某灌水用户的举报和投诉',
+        contentBody: '今天在学术大厅看到有人恶意刷屏发广告，希望能做封禁处理，维护社区秩序。',
+        reason: '垃圾广告',
+        description: '这个帖子是个测试广告贴。',
+        status: 'PENDING',
+        createdAt: '2026-05-19T07:15:00.000Z'
+      }
+    ],
+    lastIds: {
+      category: 4,
+      post: 8,
+      comment: 9,
+      notification: 2,
+      announcement: 3,
+      user: 3,
+      report: 1
+    }
+  };
 
 /**
  * Get or initialize database state from localStorage
  */
 function getDbState(): MockDbState {
   const data = localStorage.getItem(STORAGE_KEY);
+  let state: MockDbState;
   if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_STATE));
-    return INITIAL_STATE;
+    state = { ...INITIAL_STATE };
+  } else {
+    try {
+      state = JSON.parse(data);
+    } catch (e) {
+      state = { ...INITIAL_STATE };
+    }
   }
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_STATE));
-    return INITIAL_STATE;
-  }
+  if (!state.likes) state.likes = [];
+  if (!state.bookmarks) state.bookmarks = [];
+  if (!state.reports) state.reports = [];
+  if (!state.lastIds.report) state.lastIds.report = state.reports.length;
+  return state;
 }
 
 /**
@@ -176,6 +202,21 @@ function getCurrentUser(config: AxiosRequestConfig): { username: string; role: s
     }
   }
   return null;
+}
+
+function decoratePost(post: Post, userId: number | null, dbState: MockDbState): Post {
+  const likes = dbState.likes || [];
+  const bookmarks = dbState.bookmarks || [];
+  const postLikes = likes.filter(l => l.postId === post.id);
+  const likeCount = postLikes.length;
+  const isLikedByCurrentUser = userId ? likes.some(l => l.postId === post.id && l.userId === userId) : false;
+  const isBookmarkedByCurrentUser = userId ? bookmarks.some(b => b.postId === post.id && b.userId === userId) : false;
+  return {
+    ...post,
+    likeCount,
+    isLikedByCurrentUser,
+    isBookmarkedByCurrentUser,
+  };
 }
 
 /**
@@ -366,6 +407,7 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       const page = parseInt(params.page || '0');
       const size = parseInt(params.size || '10');
       const statusParam = params.status;
+      const sortParam = params.sort || 'latest';
 
       let filtered = state.posts;
       if (statusParam) {
@@ -375,17 +417,41 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         filtered = filtered.filter(p => p.status === 'APPROVED');
       }
       
-      // Sort: pinned first (our mock does not have pinned but we sort by id desc)
-      filtered = [...filtered].sort((a, b) => b.id - a.id);
+      // Sort logic
+      filtered = [...filtered].sort((a, b) => {
+        if (sortParam === 'comments') {
+          return (b.commentCount ?? 0) - (a.commentCount ?? 0);
+        } else if (sortParam === 'hot') {
+          const scoreA = a.viewCount * 0.3 + (a.commentCount ?? 0) * 0.7;
+          const scoreB = b.viewCount * 0.3 + (b.commentCount ?? 0) * 0.7;
+          return scoreB - scoreA;
+        } else {
+          return b.id - a.id;
+        }
+      });
+      
       responseData = paginateArray(filtered, page, size);
     }
     else if (url.match(/^\/posts\/by-category\/\d+$/) && method === 'GET') {
       const catId = parseInt(url.split('/').pop() || '0');
       const page = parseInt(params.page || '0');
       const size = parseInt(params.size || '10');
-      const filtered = state.posts
-        .filter(p => p.categoryId === catId && p.status === 'APPROVED')
-        .sort((a, b) => b.id - a.id);
+      const sortParam = params.sort || 'latest';
+      
+      let filtered = state.posts.filter(p => p.categoryId === catId && p.status === 'APPROVED');
+      
+      // Sort logic
+      filtered = [...filtered].sort((a, b) => {
+        if (sortParam === 'comments') {
+          return (b.commentCount ?? 0) - (a.commentCount ?? 0);
+        } else if (sortParam === 'hot') {
+          const scoreA = a.viewCount * 0.3 + (a.commentCount ?? 0) * 0.7;
+          const scoreB = b.viewCount * 0.3 + (b.commentCount ?? 0) * 0.7;
+          return scoreB - scoreA;
+        } else {
+          return b.id - a.id;
+        }
+      });
       
       responseData = paginateArray(filtered, page, size);
     }
@@ -406,9 +472,13 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         status = 404;
         throw new Error('主题帖不存在或已被删除！');
       }
-      // Increment views
-      state.posts[postIdx].viewCount++;
-      saveDbState(state);
+      // Increment views only once per session
+      const increaseView = params.increaseView !== false && params.increaseView !== 'false';
+      if (increaseView && !viewedPostIds.has(postId)) {
+        state.posts[postIdx].viewCount++;
+        viewedPostIds.add(postId);
+        saveDbState(state);
+      }
       responseData = state.posts[postIdx];
     }
     else if (url === '/posts' && method === 'POST') {
@@ -491,6 +561,73 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       state.comments = state.comments.filter(c => c.postId !== postId);
       saveDbState(state);
       responseData = null;
+    }
+    else if (url.match(/^\/posts\/\d+\/like$/) && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      const postId = parseInt(url.split('/')[2]);
+      const post = state.posts.find(p => p.id === postId);
+      if (!post) {
+        status = 404;
+        throw new Error('帖子不存在！');
+      }
+      if (!state.likes) state.likes = [];
+      const likeIdx = state.likes.findIndex(l => l.postId === postId && l.userId === currentUser.id);
+      let isLiked = false;
+      if (likeIdx > -1) {
+        state.likes.splice(likeIdx, 1);
+      } else {
+        state.likes.push({ postId, userId: currentUser.id });
+        isLiked = true;
+      }
+      saveDbState(state);
+      const postLikes = state.likes.filter(l => l.postId === postId);
+      responseData = {
+        message: isLiked ? '点赞成功' : '已取消点赞',
+        data: {
+          likeCount: postLikes.length,
+          isLiked
+        }
+      };
+    }
+    else if (url.match(/^\/posts\/\d+\/bookmark$/) && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      const postId = parseInt(url.split('/')[2]);
+      const post = state.posts.find(p => p.id === postId);
+      if (!post) {
+        status = 404;
+        throw new Error('帖子不存在！');
+      }
+      if (!state.bookmarks) state.bookmarks = [];
+      const bookmarkIdx = state.bookmarks.findIndex(b => b.postId === postId && b.userId === currentUser.id);
+      let isBookmarked = false;
+      if (bookmarkIdx > -1) {
+        state.bookmarks.splice(bookmarkIdx, 1);
+      } else {
+        state.bookmarks.push({ postId, userId: currentUser.id });
+        isBookmarked = true;
+      }
+      saveDbState(state);
+      responseData = {
+        message: isBookmarked ? '收藏成功' : '已取消收藏',
+        data: {
+          isBookmarked
+        }
+      };
+    }
+    else if (url === '/users/me/bookmarks' && method === 'GET') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      if (!state.bookmarks) state.bookmarks = [];
+      const userBookmarkedIds = state.bookmarks.filter(b => b.userId === currentUser.id).map(b => b.postId);
+      responseData = state.posts.filter(p => userBookmarkedIds.includes(p.id) && p.status === 'APPROVED');
     }
 
     // ============ Comment API ============
@@ -629,6 +766,28 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       state.comments = state.comments.filter(c => c.id !== commentId);
       saveDbState(state);
       responseData = null;
+    }
+    else if (url.match(/^\/comments\/\d+$/) && method === 'PUT') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      const commentId = parseInt(url.split('/').pop() || '0');
+      const commentIdx = state.comments.findIndex(c => c.id === commentId);
+      if (commentIdx === -1) {
+        status = 404;
+        throw new Error('评论不存在！');
+      }
+
+      const comment = state.comments[commentIdx];
+      if (comment.authorUsername !== currentUser.username && currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('无权编辑此评论！');
+      }
+
+      state.comments[commentIdx].content = data.content;
+      saveDbState(state);
+      responseData = { success: true, message: '修改成功', data: state.comments[commentIdx] };
     }
 
     // ============ User Profile API ============
@@ -863,6 +1022,14 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       const mockAvatarUrl = `/uploads/avatars/${currentUser.id}_${Date.now()}.jpg`;
       responseData = { success: true, message: '头像上传成功', data: { avatarUrl: mockAvatarUrl } };
     }
+    else if (url === '/upload' && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('未登录！');
+      }
+      const mockImageUrl = `https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=600&q=80`;
+      responseData = { success: true, message: '图片上传成功', data: { url: mockImageUrl } };
+    }
 
     // ============ Announcement API ============
     else if (url === '/announcements' && method === 'GET') {
@@ -932,10 +1099,89 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       responseData = { success: true, message: '公告删除成功' };
     }
 
+    // ============ Reports API ============
+    else if (url === '/reports' && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      if (!state.reports) state.reports = [];
+      if (!state.lastIds.report) state.lastIds.report = 0;
+      state.lastIds.report++;
+      
+      let contentBody = '';
+      let contentTitle = '';
+      if (data.contentType === 'POST') {
+        const post = state.posts.find(p => p.id === data.contentId);
+        contentBody = post ? post.content : '';
+        contentTitle = post ? post.title : '';
+      } else {
+        const comment = state.comments.find(c => c.id === data.contentId);
+        contentBody = comment ? comment.content : '';
+        const post = comment ? state.posts.find(p => p.id === comment.postId) : null;
+        contentTitle = post ? post.title : '未知帖子';
+      }
+      
+      const newReport = {
+        id: state.lastIds.report,
+        reporterId: currentUser.id,
+        reporterUsername: currentUser.username,
+        contentType: data.contentType,
+        contentId: data.contentId,
+        contentTitle,
+        contentBody,
+        reason: data.reason,
+        description: data.description || '',
+        status: 'PENDING',
+        createdAt: getNowString()
+      };
+      
+      state.reports.push(newReport);
+      saveDbState(state);
+      responseData = { success: true, message: '举报提交成功', data: newReport };
+    }
+    else if (url === '/admin/reports' && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      responseData = state.reports || [];
+    }
+    else if (url.match(/^\/admin\/reports\/\d+$/) && method === 'PUT') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      const reportId = parseInt(url.split('/').pop() || '0');
+      if (!state.reports) state.reports = [];
+      const idx = state.reports.findIndex(r => r.id === reportId);
+      if (idx === -1) {
+        status = 404;
+        throw new Error('举报记录不存在！');
+      }
+      state.reports[idx].status = data.status;
+      saveDbState(state);
+      responseData = { success: true, message: '举报处理成功' };
+    }
+
     // Default error for unhandled Mock paths
     else {
       status = 404;
       throw new Error(`Mock endpoint not found: ${method} ${url}`);
+    }
+
+    // Post decoration logic
+    if (responseData) {
+      const isPost = (obj: any) => obj && typeof obj === 'object' && 'title' in obj && 'content' in obj && 'viewCount' in obj;
+      if (Array.isArray(responseData)) {
+        responseData = responseData.map(item => isPost(item) ? decoratePost(item, currentUser?.id ?? null, state) : item);
+      } else if (responseData.content && Array.isArray(responseData.content)) {
+        responseData.content = responseData.content.map((item: any) => isPost(item) ? decoratePost(item, currentUser?.id ?? null, state) : item);
+      } else if (isPost(responseData)) {
+        responseData = decoratePost(responseData, currentUser?.id ?? null, state);
+      } else if (responseData.data && isPost(responseData.data)) {
+        responseData.data = decoratePost(responseData.data, currentUser?.id ?? null, state);
+      }
     }
 
     // Return successful response

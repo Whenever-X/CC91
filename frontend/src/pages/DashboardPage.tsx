@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getNotifications, getUnreadCount } from '../api/notification';
 import { getMyComments, getMyPosts, getMyDrafts } from '../api/user';
+import { getMyBookmarks } from '../api/bookmark';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
 
@@ -53,6 +54,17 @@ export default function DashboardPage() {
   const { data: myDrafts = [] } = useQuery({
     queryKey: queryKeys.users.meDrafts(),
     queryFn: () => getMyDrafts(),
+    enabled: !!user,
+  });
+
+  // 获取我的收藏帖子
+  const {
+    data: myBookmarks = [],
+    isLoading: myBookmarksLoading,
+    error: myBookmarksError,
+  } = useQuery({
+    queryKey: ['users', 'me', 'bookmarks'],
+    queryFn: () => getMyBookmarks(),
     enabled: !!user,
   });
 
@@ -118,6 +130,12 @@ export default function DashboardPage() {
           <div className="quick-desc">更新登录密码</div>
         </div>
 
+        <div className="cc98-quick-card" onClick={() => navigate('/dashboard/bookmarks')}>
+          <div className="quick-icon"><i className="fa fa-star-o"></i></div>
+          <div className="quick-title">我的收藏</div>
+          <div className="quick-desc">管理并浏览我收藏的帖子</div>
+        </div>
+
         {user?.role === 'ADMIN' && (
           <div className="cc98-quick-card admin-card" onClick={() => navigate('/admin')}>
             <div className="quick-icon"><i className="fa fa-cogs"></i></div>
@@ -159,6 +177,38 @@ export default function DashboardPage() {
               )}
               <button className="cc98-panel-btn" onClick={() => navigate('/dashboard/posts')}>
                 查看全部帖子
+              </button>
+            </div>
+          </div>
+
+          {/* 我的收藏 */}
+          <div className="cc98-panel-classic col-orange" style={{ borderTop: '6px solid var(--accent-color)' }}>
+            <div className="cc98-panel-title">
+              <i className="fa fa-star-o"></i> 我的收藏帖子
+            </div>
+            <div className="cc98-panel-body">
+              {myBookmarksLoading ? (
+                <div className="loading-state">载入中...</div>
+              ) : myBookmarksError ? (
+                <div className="error-state">获取收藏列表失败</div>
+              ) : myBookmarks.length === 0 ? (
+                <div className="empty-state">您还没有收藏过任何主题帖</div>
+              ) : (
+                <ul className="cc98-dashboard-list">
+                  {myBookmarks.slice(0, 5).map((post) => (
+                    <li key={post.id} onClick={() => navigate(`/posts/${post.id}`)}>
+                      <div className="item-title">{post.title}</div>
+                      <div className="item-meta">
+                        <span>作者: {post.authorUsername}</span>
+                        <span>·</span>
+                        <span>{post.commentCount ?? 0} 条评论</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button className="cc98-panel-btn" onClick={() => navigate('/dashboard/bookmarks')}>
+                查看全部收藏
               </button>
             </div>
           </div>
