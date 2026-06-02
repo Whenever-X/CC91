@@ -51,6 +51,15 @@ export async function deleteComment(commentId: number): Promise<void> {
 }
 
 /**
+ * Update comment content
+ * PUT /api/comments/{id} - backend wraps in ApiResponse
+ */
+export async function updateComment(commentId: number, content: string): Promise<Comment> {
+  const response = await client.put<ApiResponse<Comment>>(`/comments/${commentId}`, { content });
+  return response.data.data!;
+}
+
+/**
  * Get all comments for a post (tree structure)
  * GET /api/posts/{postId}/comments - backend returns List directly
  */

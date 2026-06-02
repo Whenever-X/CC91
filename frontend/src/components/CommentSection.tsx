@@ -6,10 +6,13 @@ import {
   getCommentsByPostId,
   createComment,
   replyToComment,
-  deleteComment
+  deleteComment,
+  updateComment
 } from '../api/comment';
+import { submitReport } from '../api/report';
 import { queryKeys } from '../lib/queryKeys';
 import PostCard from './PostCard';
+import ReportDialog from './ReportDialog';
 
 interface CommentSectionProps {
   postId: number;
@@ -95,6 +98,14 @@ export default function CommentSection({
   // Track which comment has an open reply form
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<number | null>(null);
 
+  // States for inline comment editing
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+
+  // States for reporting comment
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportTargetId, setReportTargetId] = useState<number | null>(null);
+
   // 获取评论列表
   const { data: comments = [], isLoading, error: queryError } = useQuery({
     queryKey: queryKeys.comments.byPost(postId),
@@ -143,6 +154,65 @@ export default function CommentSection({
       setError(err.response?.data?.message || '删除楼层失败');
     },
   });
+
+  // 编辑评论 mutation
+  const updateCommentMutation = useMutation({
+    mutationFn: ({ commentId, content }: { commentId: number; content: string }) =>
+      updateComment(commentId, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.comments.byPost(postId) });
+      setEditingCommentId(null);
+      setEditContent('');
+      setError('');
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || '修改评论失败');
+    },
+  });
+
+  // 举报 mutation
+  const submitReportMutation = useMutation({
+    mutationFn: (data: { contentType: 'POST' | 'COMMENT'; contentId: number; reason: string; description?: string }) =>
+      submitReport(data),
+    onSuccess: () => {
+      alert('举报提交成功，感谢您的配合！');
+      setIsReportOpen(false);
+    },
+  });
+
+  const handleStartEdit = (commentId: number, currentContent: string) => {
+    setEditingCommentId(commentId);
+    setEditContent(currentContent);
+  };
+
+  const handleSaveEdit = (commentId: number) => {
+    if (!editContent.trim()) return;
+    updateCommentMutation.mutate({ commentId, content: editContent.trim() });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditContent('');
+  };
+
+  const handleOpenReport = (commentId: number) => {
+    if (!isAuthenticated) {
+      alert('请先登录！');
+      return;
+    }
+    setReportTargetId(commentId);
+    setIsReportOpen(true);
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    if (reportTargetId === null) return;
+    await submitReportMutation.mutateAsync({
+      contentType: 'COMMENT',
+      contentId: reportTargetId,
+      reason,
+      description
+    });
+  };
 
   // 发表新评论
   const handleSubmitComment = (e: FormEvent) => {
@@ -216,6 +286,13 @@ export default function CommentSection({
                 currentUserCanModify={currentUser?.username === comment.authorUsername}
                 onDelete={() => handleDeleteComment(comment.id)}
                 onQuote={onQuoteTriggered}
+                onEdit={() => handleStartEdit(comment.id, comment.content)}
+                isEditing={editingCommentId === comment.id}
+                editContent={editContent}
+                onEditContentChange={setEditContent}
+                onSaveEdit={() => handleSaveEdit(comment.id)}
+                onCancelEdit={handleCancelEdit}
+                onReport={() => handleOpenReport(comment.id)}
               >
                 {/* 嵌套的回复列表 (引用样式) */}
                 {comment.replies && comment.replies.length > 0 && (
@@ -229,16 +306,25 @@ export default function CommentSection({
                           <span className="time">{new Date(reply.createdAt).toLocaleString('zh-CN')}</span>
                         </div>
                         <div className="cc98-nested-reply-content">{reply.content}</div>
-                        {currentUser?.username === reply.authorUsername && (
-                          <div style={{ textAlign: 'right', marginTop: '0.2rem' }}>
+                        <div style={{ textAlign: 'right', marginTop: '0.2rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                          {isAuthenticated && (
+                            <button
+                              onClick={() => handleOpenReport(reply.id)}
+                              className="cc98-nested-delete-btn"
+                              style={{ color: '#fb6165' }}
+                            >
+                              举报
+                            </button>
+                          )}
+                          {currentUser?.username === reply.authorUsername && (
                             <button
                               onClick={() => handleDeleteComment(reply.id)}
                               className="cc98-nested-delete-btn"
                             >
                               删除
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -312,6 +398,15 @@ export default function CommentSection({
           请在右侧导航栏或点击 <SafeLink to="/login" style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>登录</SafeLink> 后发表讨论楼层哦 💖
         </div>
       )}
+
+      {/* 举报弹窗 */}
+      <ReportDialog
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        onSubmit={handleReportSubmit}
+        isSubmitting={submitReportMutation.isPending}
+        contentType="COMMENT"
+      />
 
       <style>{`
         .cc98-comments-title-bar {

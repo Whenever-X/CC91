@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { createPost, updatePost, getPostById, type CreatePostRequest } from '../api/post';
 import { getCategories } from '../api/category';
+import { uploadImage } from '../api/upload';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
 
@@ -27,6 +28,10 @@ export default function CreatePostPage() {
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState<number | undefined>(initialCategoryId);
   const [error, setError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   // 记录最近一次操作的状态
   const lastStatusRef = useRef<string>('PUBLISHED');
@@ -135,6 +140,46 @@ export default function CreatePostPage() {
     createMutation.mutate(buildPostData('DRAFT'));
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+    setIsUploading(true);
+
+    try {
+      const result = await uploadImage(file);
+      const imageUrl = result.url;
+      const markdownImage = `![image](${imageUrl})`;
+
+      const textarea = contentRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        setContent(before + markdownImage + after);
+
+        // Reset cursor focus and selection
+        setTimeout(() => {
+          textarea.focus();
+          textarea.selectionStart = textarea.selectionEnd = start + markdownImage.length;
+        }, 0);
+      } else {
+        setContent((prev) => prev + `\n${markdownImage}\n`);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || '图片上传失败，请重试');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="cc98-editor-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
       {/* 1. 面包屑 */}
@@ -200,11 +245,44 @@ export default function CreatePostPage() {
 
           {/* 内容 */}
           <div className="cc98-form-group">
-            <label htmlFor="content">
-              主题正文 <span style={{ color: '#fb6165' }}>*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label htmlFor="content" style={{ marginBottom: 0 }}>
+                主题正文 <span style={{ color: '#fb6165' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={createMutation.isPending || isUploading}
+                  className="cc98-btn"
+                  style={{
+                    fontSize: '0.82rem',
+                    padding: '0.25rem 0.75rem',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--quote-bg)',
+                    color: 'var(--text-main)',
+                    borderRadius: 'var(--cc98-radius)',
+                    cursor: 'pointer',
+                    height: 'auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}
+                >
+                  <i className="fa fa-image"></i> {isUploading ? '上传中...' : '上传图片'}
+                </button>
+              </div>
+            </div>
             <textarea
               id="content"
+              ref={contentRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               disabled={createMutation.isPending}

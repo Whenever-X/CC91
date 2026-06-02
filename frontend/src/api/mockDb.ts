@@ -20,6 +20,7 @@ interface MockDbState {
   profiles: { [username: string]: UserProfile };
   likes?: { postId: number; userId: number }[];
   bookmarks?: { postId: number; userId: number }[];
+  reports?: any[];
   lastIds: {
     category: number;
     post: number;
@@ -27,6 +28,7 @@ interface MockDbState {
     notification: number;
     announcement: number;
     user: number;
+    report?: number;
   };
 }
 
@@ -89,15 +91,31 @@ const INITIAL_STATE: MockDbState = {
     user: { username: 'user', email: 'user@cc98.org', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150', bio: '一只普通的前端菜鸟，热爱生活。', location: '浙大玉泉校区', website: null, createdAt: '2026-05-18T07:00:00.000Z' },
     editor: { username: 'editor', email: 'editor@cc98.org', avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150', bio: '内容编辑，分享好文章。', location: '浙大西溪校区', website: null, createdAt: '2026-05-18T07:30:00.000Z' }
   },
-  lastIds: {
-    category: 4,
-    post: 8,
-    comment: 9,
-    notification: 2,
-    announcement: 3,
-    user: 3
-  }
-};
+    reports: [
+      {
+        id: 1,
+        reporterId: 2,
+        reporterUsername: 'user',
+        contentType: 'POST',
+        contentId: 8,
+        contentTitle: '关于对某灌水用户的举报和投诉',
+        contentBody: '今天在学术大厅看到有人恶意刷屏发广告，希望能做封禁处理，维护社区秩序。',
+        reason: '垃圾广告',
+        description: '这个帖子是个测试广告贴。',
+        status: 'PENDING',
+        createdAt: '2026-05-19T07:15:00.000Z'
+      }
+    ],
+    lastIds: {
+      category: 4,
+      post: 8,
+      comment: 9,
+      notification: 2,
+      announcement: 3,
+      user: 3,
+      report: 1
+    }
+  };
 
 /**
  * Get or initialize database state from localStorage
@@ -116,6 +134,8 @@ function getDbState(): MockDbState {
   }
   if (!state.likes) state.likes = [];
   if (!state.bookmarks) state.bookmarks = [];
+  if (!state.reports) state.reports = [];
+  if (!state.lastIds.report) state.lastIds.report = state.reports.length;
   return state;
 }
 
@@ -747,6 +767,28 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       saveDbState(state);
       responseData = null;
     }
+    else if (url.match(/^\/comments\/\d+$/) && method === 'PUT') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      const commentId = parseInt(url.split('/').pop() || '0');
+      const commentIdx = state.comments.findIndex(c => c.id === commentId);
+      if (commentIdx === -1) {
+        status = 404;
+        throw new Error('评论不存在！');
+      }
+
+      const comment = state.comments[commentIdx];
+      if (comment.authorUsername !== currentUser.username && currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('无权编辑此评论！');
+      }
+
+      state.comments[commentIdx].content = data.content;
+      saveDbState(state);
+      responseData = { success: true, message: '修改成功', data: state.comments[commentIdx] };
+    }
 
     // ============ User Profile API ============
     else if (url === '/users/me' && method === 'GET') {
@@ -980,6 +1022,14 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       const mockAvatarUrl = `/uploads/avatars/${currentUser.id}_${Date.now()}.jpg`;
       responseData = { success: true, message: '头像上传成功', data: { avatarUrl: mockAvatarUrl } };
     }
+    else if (url === '/upload' && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('未登录！');
+      }
+      const mockImageUrl = `https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=600&q=80`;
+      responseData = { success: true, message: '图片上传成功', data: { url: mockImageUrl } };
+    }
 
     // ============ Announcement API ============
     else if (url === '/announcements' && method === 'GET') {
@@ -1047,6 +1097,71 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
       state.announcements = state.announcements.filter(a => a.id !== annId);
       saveDbState(state);
       responseData = { success: true, message: '公告删除成功' };
+    }
+
+    // ============ Reports API ============
+    else if (url === '/reports' && method === 'POST') {
+      if (!currentUser) {
+        status = 401;
+        throw new Error('请先登录！');
+      }
+      if (!state.reports) state.reports = [];
+      if (!state.lastIds.report) state.lastIds.report = 0;
+      state.lastIds.report++;
+      
+      let contentBody = '';
+      let contentTitle = '';
+      if (data.contentType === 'POST') {
+        const post = state.posts.find(p => p.id === data.contentId);
+        contentBody = post ? post.content : '';
+        contentTitle = post ? post.title : '';
+      } else {
+        const comment = state.comments.find(c => c.id === data.contentId);
+        contentBody = comment ? comment.content : '';
+        const post = comment ? state.posts.find(p => p.id === comment.postId) : null;
+        contentTitle = post ? post.title : '未知帖子';
+      }
+      
+      const newReport = {
+        id: state.lastIds.report,
+        reporterId: currentUser.id,
+        reporterUsername: currentUser.username,
+        contentType: data.contentType,
+        contentId: data.contentId,
+        contentTitle,
+        contentBody,
+        reason: data.reason,
+        description: data.description || '',
+        status: 'PENDING',
+        createdAt: getNowString()
+      };
+      
+      state.reports.push(newReport);
+      saveDbState(state);
+      responseData = { success: true, message: '举报提交成功', data: newReport };
+    }
+    else if (url === '/admin/reports' && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      responseData = state.reports || [];
+    }
+    else if (url.match(/^\/admin\/reports\/\d+$/) && method === 'PUT') {
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        status = 403;
+        throw new Error('权限不足！');
+      }
+      const reportId = parseInt(url.split('/').pop() || '0');
+      if (!state.reports) state.reports = [];
+      const idx = state.reports.findIndex(r => r.id === reportId);
+      if (idx === -1) {
+        status = 404;
+        throw new Error('举报记录不存在！');
+      }
+      state.reports[idx].status = data.status;
+      saveDbState(state);
+      responseData = { success: true, message: '举报处理成功' };
     }
 
     // Default error for unhandled Mock paths
