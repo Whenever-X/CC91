@@ -56,6 +56,10 @@ public class PostService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
 
+        if (!categoryRepository.existsById(request.getCategoryId())) {
+            throw new ResourceNotFoundException("版块不存在");
+        }
+
         Post post = new Post(request.getTitle(), request.getContent(), user.getId());
         post.setCategoryId(request.getCategoryId());
         if (request.getStatus() != null) {

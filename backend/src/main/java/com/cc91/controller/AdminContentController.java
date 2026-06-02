@@ -13,6 +13,7 @@ import com.cc91.service.PostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -93,13 +94,16 @@ public class AdminContentController {
     }
 
     /**
-     * 查看所有评论（按时间倒序）
-     * GET /api/admin/comments
+     * 查看所有评论（按时间倒序，分页）
+     * GET /api/admin/comments?page=0&size=20
      */
     @GetMapping("/comments")
-    public ResponseEntity<List<AdminCommentDTO>> getAllComments() {
-        List<Comment> comments = commentRepository.findAllByOrderByCreatedAtDesc();
-        List<AdminCommentDTO> dtos = comments.stream().map(c -> {
+    public ResponseEntity<Page<AdminCommentDTO>> getAllComments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Page<Comment> comments = commentRepository.findPageWithPostAndAuthorByOrderByCreatedAtDesc(PageRequest.of(page, size));
+        Page<AdminCommentDTO> dtos = comments.map(c -> {
             String postTitle = c.getPost() != null ? c.getPost().getTitle() : "已删除";
             return new AdminCommentDTO(
                     c.getId(), c.getPostId(), postTitle,
@@ -108,7 +112,7 @@ public class AdminContentController {
                     c.getContent(), c.getParentId(),
                     c.getStatus(), c.getCreatedAt()
             );
-        }).collect(Collectors.toList());
+        });
         return ResponseEntity.ok(dtos);
     }
 

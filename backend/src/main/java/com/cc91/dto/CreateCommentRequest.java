@@ -1,6 +1,7 @@
 package com.cc91.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * 创建评论请求
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 public class CreateCommentRequest {
 
     @NotBlank(message = "评论内容不能为空")
+    @Size(max = 2000, message = "评论长度不能超过2000个字符")
     private String content;
 
     public CreateCommentRequest() {}
