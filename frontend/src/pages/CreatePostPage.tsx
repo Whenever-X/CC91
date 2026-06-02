@@ -64,7 +64,7 @@ export default function CreatePostPage() {
   const createMutation = useMutation({
     mutationFn: isDraftMode
       ? (data: CreatePostRequest) => updatePost(Number(draftId), data)
-      : (data: CreatePostRequest) => (createPost as any)(data, {}),
+      : (data: CreatePostRequest) => createPost(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.posts.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.mePosts() });

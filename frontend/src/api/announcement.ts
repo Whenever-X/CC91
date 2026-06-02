@@ -57,7 +57,7 @@ export async function getAnnouncement(id: number): Promise<Announcement> {
  */
 export async function adminCreateAnnouncement(data: CreateAnnouncementRequest): Promise<Announcement> {
   const response = await client.post<ApiResponse<Announcement>>('/admin/announcements', data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**
@@ -66,7 +66,7 @@ export async function adminCreateAnnouncement(data: CreateAnnouncementRequest): 
  */
 export async function adminUpdateAnnouncement(id: number, data: UpdateAnnouncementRequest): Promise<Announcement> {
   const response = await client.put<ApiResponse<Announcement>>(`/admin/announcements/${id}`, data);
-  return response.data.data;
+  return response.data.data!;
 }
 
 /**

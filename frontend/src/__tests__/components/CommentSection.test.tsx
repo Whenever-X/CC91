@@ -214,7 +214,6 @@ describe('CommentSection', () => {
     });
 
     it('发表空评论不应该提交', async () => {
-      const user = userEvent.setup();
       vi.mocked(commentApi.getCommentsByPostId).mockResolvedValue([]);
 
       render(<CommentSection postId={1} />, { wrapper: createWrapper() });

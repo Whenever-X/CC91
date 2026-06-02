@@ -32,10 +32,10 @@ const getNowString = () => new Date().toISOString();
 
 const INITIAL_STATE: MockDbState = {
   categories: [
-    { id: 1, name: 'CC98广场', description: '这里是CC98论坛的主板块，分享校园见闻、趣事和日常讨论。', sortOrder: 1, createdAt: getNowString() },
-    { id: 2, name: '学术大厅', description: '课程推荐、选课讨论、保研考研出国心得，学术交流与分享。', sortOrder: 2, createdAt: getNowString() },
-    { id: 3, name: '心灵之约', description: '树洞、情感倾诉、人生感悟，温暖治愈的角落。', sortOrder: 3, createdAt: getNowString() },
-    { id: 4, name: '技术交流', description: '程序人生，极客沙龙，React/Next.js/Spring等技术问题探讨。', sortOrder: 4, createdAt: getNowString() },
+    { id: 1, name: 'CC98广场', description: '这里是CC98论坛的主板块，分享校园见闻、趣事和日常讨论。', sortOrder: 1, createdAt: getNowString(), postCount: 0, todayPostCount: 0 },
+    { id: 2, name: '学术大厅', description: '课程推荐、选课讨论、保研考研出国心得，学术交流与分享。', sortOrder: 2, createdAt: getNowString(), postCount: 0, todayPostCount: 0 },
+    { id: 3, name: '心灵之约', description: '树洞、情感倾诉、人生感悟，温暖治愈的角落。', sortOrder: 3, createdAt: getNowString(), postCount: 0, todayPostCount: 0 },
+    { id: 4, name: '技术交流', description: '程序人生，极客沙龙，React/Next.js/Spring等技术问题探讨。', sortOrder: 4, createdAt: getNowString(), postCount: 0, todayPostCount: 0 },
   ],
   posts: [
     { id: 1, title: '关于CC91 BBS论坛系统正式上线运行的公告', content: '大家好！CC91 BBS论坛系统已于今日正式上线！\n\n新系统采用现代化的 React 19 前端架构与 Spring Boot 后端，支持经典的 CC98 视觉皮肤和丰富的交互功能。欢迎大家体验并反馈 Bug！\n\n我们将致力于打造一个绿色、温馨、高效的校园论坛环境。', authorId: 1, authorUsername: 'admin', categoryId: 1, categoryName: 'CC98广场', status: 'APPROVED', createdAt: '2026-05-18T08:00:00.000Z', updatedAt: '2026-05-18T08:00:00.000Z', viewCount: 1520, commentCount: 3 },
@@ -320,7 +320,9 @@ export async function mockRequestAdapter(config: AxiosRequestConfig): Promise<Ax
         name: data.name,
         description: data.description || '',
         sortOrder: data.sortOrder || 1,
-        createdAt: getNowString()
+        createdAt: getNowString(),
+        postCount: 0,
+        todayPostCount: 0
       };
       state.categories.push(newCat);
       saveDbState(state);

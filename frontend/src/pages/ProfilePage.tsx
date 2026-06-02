@@ -4,16 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { getUserProfile } from '../api/user';
 import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
-import catAvatar from '../assets/cc98_avatar_cat.png';
-import studentAvatar from '../assets/cc98_avatar_student.png';
 
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash);
-}
+
 
 /**
  * CC98 风格用户资料展示页面组件
@@ -67,9 +59,7 @@ export default function ProfilePage() {
     );
   }
 
-  const hash = hashCode(profile.username);
-  const defaultAvatar = hash % 3 === 0 ? studentAvatar : catAvatar;
-  const avatar = profile.avatarUrl || defaultAvatar;
+
 
   return (
     <div className="cc98-profile-page container" style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>

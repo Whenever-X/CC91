@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   adminGetPosts, adminUpdatePostStatus, adminDeletePost,
-  adminGetComments, adminDeleteComment,
-  type Post, type AdminComment
+  adminGetComments, adminDeleteComment
 } from '../../api/admin';
 import ErrorMessage from '../../components/ErrorMessage';
 import { queryKeys } from '../../lib/queryKeys';

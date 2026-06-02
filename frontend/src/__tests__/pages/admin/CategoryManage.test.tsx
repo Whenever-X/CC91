@@ -88,7 +88,7 @@ describe('CategoryManage', () => {
     const user = userEvent.setup();
     setupMocks();
     vi.mocked(categoryApi.createCategory).mockResolvedValue({
-      id: 3, name: 'NewCat', description: 'New', sortOrder: 2, createdAt: '2026-01-01T00:00:00',
+      id: 3, name: 'NewCat', description: 'New', sortOrder: 2, createdAt: '2026-01-01T00:00:00', postCount: 0, todayPostCount: 0,
     });
 
     render(<CategoryManage />, { wrapper: createWrapper() });
