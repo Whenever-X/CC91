@@ -1,6 +1,7 @@
 package com.cc91.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -14,8 +15,10 @@ public class CreatePostRequest {
     private String title;
 
     @NotBlank(message = "内容不能为空")
+    @Size(max = 50000, message = "内容长度不能超过50000个字符")
     private String content;
 
+    @NotNull(message = "版块不能为空")
     private Long categoryId;
 
     @Pattern(regexp = "^(PUBLISHED|DRAFT)$", message = "状态必须是 PUBLISHED 或 DRAFT")

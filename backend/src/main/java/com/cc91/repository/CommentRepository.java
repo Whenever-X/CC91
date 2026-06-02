@@ -1,7 +1,10 @@
 package com.cc91.repository;
 
 import com.cc91.entity.Comment;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -44,6 +47,12 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     /**
      * 查询所有评论（按时间倒序，用于管理员审核）
+     * JOIN FETCH 避免 LazyInitializationException
      */
-    List<Comment> findAllByOrderByCreatedAtDesc();
+    @Query("SELECT c FROM Comment c LEFT JOIN FETCH c.post LEFT JOIN FETCH c.author ORDER BY c.createdAt DESC")
+    List<Comment> findAllWithPostAndAuthorByOrderByCreatedAtDesc();
+
+    @Query(value = "SELECT c FROM Comment c LEFT JOIN FETCH c.post LEFT JOIN FETCH c.author ORDER BY c.createdAt DESC",
+           countQuery = "SELECT COUNT(c) FROM Comment c")
+    Page<Comment> findPageWithPostAndAuthorByOrderByCreatedAtDesc(Pageable pageable);
 }
