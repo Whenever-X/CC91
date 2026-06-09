@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -98,6 +99,7 @@ public class AdminContentController {
      * GET /api/admin/comments?page=0&size=20
      */
     @GetMapping("/comments")
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<AdminCommentDTO>> getAllComments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -77,4 +78,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             String status2, String contentKeyword,
             Pageable pageable
     );
+
+    /**
+     * 原子更新浏览量（避免并发竞态条件）
+     */
+    @Modifying
+    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
+    void incrementViewCount(@Param("id") Long id);
 }
