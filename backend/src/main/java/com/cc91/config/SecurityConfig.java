@@ -87,7 +87,7 @@ public class SecurityConfig {
                         // log in, refresh tokens, and request password resets.
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("GET", "/api/users/{username}").permitAll()
-                        .requestMatchers("GET", "/api/posts", "/api/posts/{id}", "/api/posts/search").permitAll()
+                        .requestMatchers("GET", "/api/posts", "/api/posts/{id}", "/api/posts/search", "/api/posts/by-category/**").permitAll()
                         .requestMatchers("GET", "/api/posts/*/comments").permitAll()
                         .requestMatchers("GET", "/api/categories").permitAll()
                         .requestMatchers("GET", "/api/announcements", "/api/announcements/{id}").permitAll()
