@@ -1,0 +1,18 @@
+package com.cc91.notificationservice.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+/**
+ * Feign client for calling User Service
+ */
+@FeignClient(name = "user-service")
+public interface UserServiceClient {
+
+    @GetMapping("/api/users/internal/username/{username}")
+    UserInfoDTO getUserByUsername(@PathVariable String username);
+
+    @GetMapping("/api/users/internal/{id}")
+    UserInfoDTO getUserById(@PathVariable Long id);
+}
