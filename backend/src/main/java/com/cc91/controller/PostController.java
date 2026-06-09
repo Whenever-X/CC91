@@ -9,6 +9,8 @@ import com.cc91.service.PostService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Map;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -77,13 +79,14 @@ public class PostController {
 
     /**
      * 分页查询帖子列表
-     * GET /api/posts?page=0&size=10&status=PUBLISHED
+     * GET /api/posts?page=0&size=10&status=PUBLISHED&sort=latest
      */
     @GetMapping
     public ResponseEntity<Page<PostResponse>> getPostList(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "PUBLISHED") String status
+            @RequestParam(defaultValue = "PUBLISHED") String status,
+            @RequestParam(defaultValue = "latest") String sort
     ) {
         // 非管理员请求非 PUBLISHED 状态时，强制改为 PUBLISHED
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -93,7 +96,7 @@ public class PostController {
         if (!isAdmin && !"PUBLISHED".equals(status)) {
             status = "PUBLISHED";
         }
-        Page<PostResponse> posts = postService.getPostList(page, size, status);
+        Page<PostResponse> posts = postService.getPostList(page, size, status, sort);
         return ResponseEntity.ok(posts);
     }
 
@@ -123,6 +126,28 @@ public class PostController {
     ) {
         Page<PostResponse> posts = postService.searchPosts(keyword, page, size);
         return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 切换点赞状态（点赞/取消点赞）
+     * POST /api/posts/{id}/like
+     */
+    @PostMapping("/{id}/like")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> toggleLike(@PathVariable Long id) {
+        String username = getCurrentUsername();
+        Map<String, Object> result = postService.toggleLike(username, id);
+        return ResponseEntity.ok(ApiResponse.success("操作成功", result));
+    }
+
+    /**
+     * 切换收藏状态（收藏/取消收藏）
+     * POST /api/posts/{id}/bookmark
+     */
+    @PostMapping("/{id}/bookmark")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> toggleBookmark(@PathVariable Long id) {
+        String username = getCurrentUsername();
+        Map<String, Object> result = postService.toggleBookmark(username, id);
+        return ResponseEntity.ok(ApiResponse.success("操作成功", result));
     }
 
     /**

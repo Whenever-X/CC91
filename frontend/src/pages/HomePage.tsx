@@ -37,8 +37,8 @@ export default function HomePage() {
 
   // 获取更多帖子用于热门排序
   const { data: morePostsData } = useQuery({
-    queryKey: queryKeys.posts.list({ page: 0, size: 50 }),
-    queryFn: () => getPostList(0, 50),
+    queryKey: [...queryKeys.posts.list({ page: 0, size: 50 }), sortBy],
+    queryFn: () => getPostList(0, 50, undefined, sortBy),
   });
 
   // 计算热门帖子（按浏览量排序，取前6个）

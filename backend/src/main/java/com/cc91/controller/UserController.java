@@ -101,6 +101,16 @@ public class UserController {
     }
 
     /**
+     * 获取当前用户收藏的帖子列表
+     * GET /api/users/me/bookmarks
+     */
+    @GetMapping("/me/bookmarks")
+    public ResponseEntity<List<PostResponse>> getMyBookmarks() {
+        String username = getCurrentUsername();
+        return ResponseEntity.ok(postService.getMyBookmarks(username));
+    }
+
+    /**
      * 修改当前用户密码
      * PUT /api/users/me/password
      */

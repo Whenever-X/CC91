@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Duration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -320,6 +321,68 @@ class AuthServiceTest {
         assertFalse(updatedUser.getIsLocked());
         assertEquals(0, updatedUser.getFailedLoginAttempts());
         assertTrue(refreshTokenRepository.findByToken(token.getToken()).orElseThrow().getRevoked());
+    }
+
+    // ==================== forgotPassword 方法测试 ====================
+
+    @Test
+    @Transactional
+    void forgotPassword_EmailExists_SendsResetCode() {
+        // Arrange
+        userRepository.save(new User("testuser", "test@example.com", passwordEncoder.encode("password123")));
+
+        // Act
+        authService.forgotPassword("test@example.com");
+
+        // Assert: 验证码已保存
+        VerificationCode code = verificationCodeRepository
+                .findFirstByEmailAndTypeOrderByCreatedAtDesc("test@example.com", "PASSWORD_RESET")
+                .orElseThrow();
+        assertFalse(code.getUsed());
+        assertTrue(code.getExpiresAt().isAfter(LocalDateTime.now()));
+    }
+
+    @Test
+    @Transactional
+    void forgotPassword_EmailNotExists_SilentlyReturns() {
+        // Act: 不存在的邮箱，不应抛出异常
+        assertDoesNotThrow(() -> authService.forgotPassword("unknown@example.com"));
+
+        // Assert: 不应创建任何验证码
+        assertTrue(verificationCodeRepository
+                .findFirstByEmailAndTypeOrderByCreatedAtDesc("unknown@example.com", "PASSWORD_RESET")
+                .isEmpty());
+    }
+
+    // ==================== resendVerification 方法测试 ====================
+
+    @Test
+    @Transactional
+    void resendVerification_ValidUser_SendsCode() {
+        // Arrange: 创建未验证用户（locked + lockUntil=null）
+        User user = new User("unverified", "unverified@example.com", passwordEncoder.encode("password123"));
+        user.setIsLocked(true);
+        user.setLockUntil(null);
+        userRepository.save(user);
+
+        // Act
+        RegisterResponse response = authService.resendVerification("unverified@example.com");
+
+        // Assert
+        assertEquals(AuthService.VERIFICATION_CODE_SENT, response.getMessage());
+        assertEquals(600, response.getExpiresIn());
+
+        VerificationCode code = verificationCodeRepository
+                .findFirstByEmailAndTypeOrderByCreatedAtDesc("unverified@example.com", "REGISTER")
+                .orElseThrow();
+        assertFalse(code.getUsed());
+    }
+
+    @Test
+    void resendVerification_UserNotFound_ThrowsBadRequest() {
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> authService.resendVerification("nonexistent@example.com"));
+        assertEquals(AuthService.USER_NOT_FOUND, exception.getMessage());
     }
 
     private RegisterRequest registerRequest(String username, String email, String password) {

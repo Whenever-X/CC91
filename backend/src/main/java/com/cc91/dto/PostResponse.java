@@ -20,6 +20,9 @@ public class PostResponse {
     private String status;
     private Long commentCount;
     private String authorAvatarUrl;
+    private Long likeCount;
+    private Boolean isLikedByCurrentUser;
+    private Boolean isBookmarkedByCurrentUser;
 
     public PostResponse() {}
 
@@ -94,4 +97,13 @@ public class PostResponse {
 
     public String getAuthorAvatarUrl() { return authorAvatarUrl; }
     public void setAuthorAvatarUrl(String authorAvatarUrl) { this.authorAvatarUrl = authorAvatarUrl; }
+
+    public Long getLikeCount() { return likeCount; }
+    public void setLikeCount(Long likeCount) { this.likeCount = likeCount; }
+
+    public Boolean getIsLikedByCurrentUser() { return isLikedByCurrentUser; }
+    public void setIsLikedByCurrentUser(Boolean isLikedByCurrentUser) { this.isLikedByCurrentUser = isLikedByCurrentUser; }
+
+    public Boolean getIsBookmarkedByCurrentUser() { return isBookmarkedByCurrentUser; }
+    public void setIsBookmarkedByCurrentUser(Boolean isBookmarkedByCurrentUser) { this.isBookmarkedByCurrentUser = isBookmarkedByCurrentUser; }
 }

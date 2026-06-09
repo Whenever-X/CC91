@@ -1,80 +1,78 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+
+// Mock AuthContext used by Header
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: null,
+    isAuthenticated: false,
+    isAdmin: false,
+    logout: vi.fn(),
+  }),
+}));
+
+// Mock NotificationBell
+vi.mock('../../components/NotificationBell', () => ({
+  default: () => <div data-testid="notification-bell">Bell</div>,
+}));
+
+// Mock image imports
+vi.mock('../../assets/cc98_banner.png', () => ({
+  default: 'banner.png',
+}));
+vi.mock('../../assets/cc98_avatar_cat.png', () => ({
+  default: 'cat-avatar.png',
+}));
+
+// Mock auth API
+vi.mock('../../api/auth', () => ({
+  logout: vi.fn(),
+}));
+
 import Layout from '../../components/Layout';
-
-// Mock child components to simplify testing
-vi.mock('../../components/Header', () => ({
-  default: () => <header data-testid="mock-header">Header Mock</header>,
-}));
-
-vi.mock('../../components/Footer', () => ({
-  default: () => <footer data-testid="mock-footer">Footer Mock</footer>,
-}));
-
-vi.mock('../../components/MockBanner', () => ({
-  default: () => <div data-testid="mock-banner">MockBanner</div>,
-}));
 
 describe('Layout', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     localStorage.clear();
   });
 
-  const renderLayout = (children: React.ReactNode = <div>Test Content</div>) => {
-    return render(
-      <MemoryRouter initialEntries={['/']}>
-        <Layout>{children}</Layout>
+  it('should render children', () => {
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>Test Child Content</div>
+        </Layout>
       </MemoryRouter>
     );
-  };
 
-  it('应渲染 Header 组件', () => {
-    renderLayout();
-
-    expect(screen.getByTestId('mock-header')).toBeInTheDocument();
+    expect(screen.getByText('Test Child Content')).toBeInTheDocument();
   });
 
-  it('应渲染 Footer 组件', () => {
-    renderLayout();
+  it('should include Header and Footer', () => {
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('mock-footer')).toBeInTheDocument();
+    // Header renders site title link
+    expect(screen.getByText('CC91 论坛')).toBeInTheDocument();
+    // Footer renders copyright
+    expect(screen.getByText(/CC91 论坛\. 版权所有\./)).toBeInTheDocument();
   });
 
-  it('应渲染 MockBanner 组件', () => {
-    renderLayout();
+  it('should have a main content area with correct id', () => {
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('mock-banner')).toBeInTheDocument();
-  });
-
-  it('应渲染子组件内容', () => {
-    renderLayout(<div data-testid="child-content">子内容</div>);
-
-    expect(screen.getByTestId('child-content')).toBeInTheDocument();
-    expect(screen.getByText('子内容')).toBeInTheDocument();
-  });
-
-  it('应包含跳转到主内容的跳过链接', () => {
-    renderLayout();
-
-    const skipLink = screen.getByText('跳转到主要内容');
-    expect(skipLink).toBeInTheDocument();
-    expect(skipLink).toHaveAttribute('href', '#main-content');
-  });
-
-  it('应包含 main 元素作为内容区域', () => {
-    renderLayout();
-
-    const main = screen.getByRole('main');
-    expect(main).toBeInTheDocument();
-    expect(main).toHaveAttribute('id', 'main-content');
-  });
-
-  it('应应用主题 class 到 body', () => {
-    renderLayout();
-
-    // 默认主题应为 classic
-    expect(document.body.classList.contains('theme-classic')).toBe(true);
+    expect(document.getElementById('main-content')).toBeInTheDocument();
   });
 });

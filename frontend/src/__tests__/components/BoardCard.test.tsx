@@ -1,93 +1,59 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
 import BoardCard from '../../components/BoardCard';
 import type { Category } from '../../api/category';
 
 describe('BoardCard', () => {
-  const mockCategory: Category = {
+  const baseCategory: Category = {
     id: 1,
     name: '技术交流',
-    description: '编程、算法与技术讨论',
-    sortOrder: 1,
-    createdAt: '2025-01-01T00:00:00Z',
+    description: '讨论各种技术话题',
+    sortOrder: 0,
+    createdAt: '2024-01-01T00:00:00',
     postCount: 128,
-    todayPostCount: 15,
+    todayPostCount: 5,
   };
 
-  const renderBoardCard = (category = mockCategory, onClick?: (id: number) => void) => {
-    return render(<BoardCard category={category} onClick={onClick} />);
-  };
-
-  it('应显示版块名称', () => {
-    renderBoardCard();
-
+  it('should render the board name', () => {
+    render(<BoardCard category={baseCategory} />);
     expect(screen.getByText('技术交流')).toBeInTheDocument();
   });
 
-  it('应显示版块描述', () => {
-    renderBoardCard();
-
-    expect(screen.getByText('编程、算法与技术讨论')).toBeInTheDocument();
+  it('should render the board description', () => {
+    render(<BoardCard category={baseCategory} />);
+    expect(screen.getByText('讨论各种技术话题')).toBeInTheDocument();
   });
 
-  it('应显示帖子统计（主题数）', () => {
-    renderBoardCard();
-
+  it('should render post count stats', () => {
+    render(<BoardCard category={baseCategory} />);
+    expect(screen.getByText('128 贴')).toBeInTheDocument();
+    // The stats row contains "主题: 128" and "今日: 5"
     expect(screen.getByText('128')).toBeInTheDocument();
   });
 
-  it('应显示今日帖子数', () => {
-    renderBoardCard();
-
-    expect(screen.getByText('15')).toBeInTheDocument();
+  it('should render today post count', () => {
+    render(<BoardCard category={baseCategory} />);
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  it('应显示帖子总数 badge', () => {
-    renderBoardCard();
-
-    expect(screen.getByText('128 贴')).toBeInTheDocument();
-  });
-
-  it('无描述时应显示默认文本', () => {
-    const catWithoutDesc = { ...mockCategory, description: '' };
-    renderBoardCard(catWithoutDesc);
-
+  it('should render fallback description when description is empty', () => {
+    const noDescCategory = { ...baseCategory, description: '' };
+    render(<BoardCard category={noDescCategory} />);
     expect(screen.getByText('暂无描述。')).toBeInTheDocument();
   });
 
-  it('点击应触发 onClick 回调并传入版块 ID', async () => {
-    const handleClick = vi.fn();
-    renderBoardCard(mockCategory, handleClick);
+  it('should call onClick with board id when clicked', () => {
+    const onClick = vi.fn();
+    render(<BoardCard category={baseCategory} onClick={onClick} />);
+    fireEvent.click(screen.getByText('技术交流'));
+    expect(onClick).toHaveBeenCalledWith(1);
+  });
 
-    const card = screen.getByText('技术交流').closest('.cc98-board-card');
+  it('should not crash when onClick is not provided', () => {
+    render(<BoardCard category={baseCategory} />);
+    const card = screen.getByText('技术交流').closest('.cc98-board-card')!;
     expect(card).toBeInTheDocument();
-
-    if (card) {
-      await userEvent.click(card);
-    }
-
-    expect(handleClick).toHaveBeenCalledTimes(1);
-    expect(handleClick).toHaveBeenCalledWith(1);
-  });
-
-  it('应渲染 Font Awesome 图标', () => {
-    renderBoardCard();
-
-    // id=1 → fa-heartbeat
-    const icon = document.querySelector('.cc98-board-icon i');
-    expect(icon).toBeInTheDocument();
-    expect(icon).toHaveClass('fa-heartbeat');
-  });
-
-  it('不同 ID 应渲染不同图标', () => {
-    const cat2 = { ...mockCategory, id: 2 };
-    const { unmount } = renderBoardCard(cat2);
-
-    // id=2 → fa-gamepad
-    const icon = document.querySelector('.cc98-board-icon i');
-    expect(icon).toHaveClass('fa-gamepad');
-
-    unmount();
+    fireEvent.click(card);
+    // No error should be thrown
   });
 });

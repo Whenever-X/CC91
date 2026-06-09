@@ -81,6 +81,8 @@ export default function ProfileEditPage() {
       setIsUploading(true);
       const url = await uploadAvatar(file);
       setCurrentAvatarUrl(url);
+      // 头像上传成功后自动保存 profile，避免用户忘记保存导致孤立文件
+      updateMutation.mutate();
     } catch (err: any) {
       setError(err.response?.data?.message || '图片上传失败，请重试');
     } finally {

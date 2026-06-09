@@ -56,6 +56,19 @@ public class CommentController {
     }
 
     /**
+     * 编辑评论
+     * PUT /api/comments/{id}
+     */
+    @PutMapping("/comments/{id}")
+    public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateCommentRequest request) {
+        String username = getCurrentUsername();
+        CommentResponse comment = commentService.updateComment(username, id, request.getContent());
+        return ResponseEntity.ok(ApiResponse.success("评论更新成功", comment));
+    }
+
+    /**
      * 删除评论
      * DELETE /api/comments/{id}
      */

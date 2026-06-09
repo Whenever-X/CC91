@@ -2,6 +2,7 @@ package com.cc91.service;
 
 import com.cc91.dto.CommentResponse;
 import com.cc91.dto.CreateCommentRequest;
+import com.cc91.dto.UserCommentResponse;
 import com.cc91.entity.Comment;
 import com.cc91.entity.Post;
 import com.cc91.entity.User;
@@ -409,5 +410,62 @@ class CommentServiceTest {
         CommentResponse level2 = level1.getReplies().get(0);
         assertEquals("二级回复", level2.getContent());
         assertEquals(0, level2.getReplies().size());
+    }
+
+    // ==================== getMyComments 方法测试 ====================
+
+    @Test
+    @Transactional
+    void getMyComments_ReturnsCommentsWithPostTitle() {
+        // Arrange: 创建用户、帖子和评论
+        User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(user);
+
+        Post post = new Post("测试帖子标题", "内容", user.getId());
+        postRepository.saveAndFlush(post);
+
+        Comment comment = new Comment(post.getId(), user.getId(), "我的评论", null);
+        comment.setStatus("PUBLISHED");
+        commentRepository.saveAndFlush(comment);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        List<UserCommentResponse> result = commentService.getMyComments("author");
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("我的评论", result.get(0).getContent());
+        assertEquals(post.getId(), result.get(0).getPostId());
+        assertEquals("测试帖子标题", result.get(0).getPostTitle());
+        assertEquals("PUBLISHED", result.get(0).getStatus());
+        assertNotNull(result.get(0).getCreatedAt());
+    }
+
+    @Test
+    @Transactional
+    void getMyComments_NoComments_ReturnsEmptyList() {
+        // Arrange: 创建用户但没有评论
+        User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(user);
+
+        // Act
+        List<UserCommentResponse> result = commentService.getMyComments("author");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getMyComments_UserNotExists_ThrowsResourceNotFoundException() {
+        // Act & Assert: 用户不存在抛出异常
+        ResourceNotFoundException exception = assertThrows(
+            ResourceNotFoundException.class,
+            () -> commentService.getMyComments("nonexistent")
+        );
+        assertEquals("用户不存在", exception.getMessage());
     }
 }

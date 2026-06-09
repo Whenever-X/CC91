@@ -264,4 +264,34 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Password reset successfully"));
     }
+
+    // ==================== resendVerification 方法测试 ====================
+
+    @Test
+    @Transactional
+    void resendVerification_ValidEmail_Returns200() throws Exception {
+        // Arrange: 创建一个 locked 且 lockUntil=null 的用户（即未验证状态）
+        User user = new User("unverified", "unverified@example.com", passwordEncoder.encode("password123"));
+        user.setIsLocked(true);
+        user.setLockUntil(null);
+        userRepository.save(user);
+
+        // Act & Assert
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"unverified@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(AuthService.VERIFICATION_CODE_SENT))
+                .andExpect(jsonPath("$.expiresIn").value(600));
+    }
+
+    @Test
+    void resendVerification_UserNotFound_Returns400() throws Exception {
+        // Act & Assert: 不存在的邮箱
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nonexistent@example.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AuthService.USER_NOT_FOUND));
+    }
 }

@@ -9,6 +9,7 @@ import com.cc91.entity.Post;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.CommentRepository;
 import com.cc91.repository.PostRepository;
+import com.cc91.service.NotificationService;
 import com.cc91.service.PostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -34,13 +36,16 @@ public class AdminContentController {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PostService postService;
+    private final NotificationService notificationService;
 
     public AdminContentController(PostRepository postRepository,
                                   CommentRepository commentRepository,
-                                  PostService postService) {
+                                  PostService postService,
+                                  NotificationService notificationService) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.postService = postService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -62,6 +67,7 @@ public class AdminContentController {
      * PUT /api/admin/posts/{id}/status
      */
     @PutMapping("/posts/{id}/status")
+    @Transactional
     public ResponseEntity<ApiResponse<Void>> updatePostStatus(
             @PathVariable Long id,
             @RequestBody UpdatePostStatusRequest request
@@ -72,7 +78,15 @@ public class AdminContentController {
         post.setStatus(request.getStatus());
         postRepository.save(post);
 
-        logger.info("管理员修改帖子状态: id={}, status={}", id, request.getStatus());
+        // 通知帖子作者状态变更
+        notificationService.createNotification(
+                post.getAuthorId(), "POST_STATUS", "帖子状态变更",
+                "您的帖子「" + post.getTitle() + "」状态已变更为：" + request.getStatus(),
+                post.getId()
+        );
+
+        logger.info("管理员修改帖子状态: id={}, status={}, 已通知作者 authorId={}",
+                id, request.getStatus(), post.getAuthorId());
 
         return ResponseEntity.ok(ApiResponse.success("帖子状态已更新"));
     }
@@ -98,6 +112,7 @@ public class AdminContentController {
      * GET /api/admin/comments?page=0&size=20
      */
     @GetMapping("/comments")
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<AdminCommentDTO>> getAllComments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size

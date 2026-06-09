@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SafeLink from './SafeLink';
+import { sanitizeHtml } from '../utils/sanitize';
 import catAvatar from '../assets/cc98_avatar_cat.png';
 import studentAvatar from '../assets/cc98_avatar_student.png';
 import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
@@ -113,19 +114,16 @@ export default function PostCard({
   };
 
   const handleDislike = () => {
+    // 踩功能仅支持本地模式（无对应后端 API）
     if (disliked) {
       setDislikes(d => d - 1);
       setDisliked(false);
     } else {
       setDislikes(d => d + 1);
       setDisliked(true);
-      if (liked) {
-        if (hasLikeApi) {
-          onToggleLike?.();
-        } else {
-          setLocalLikes(l => l - 1);
-          setLocalLiked(false);
-        }
+      if (liked && !hasLikeApi) {
+        setLocalLikes(l => l - 1);
+        setLocalLiked(false);
       }
     }
   };
@@ -163,7 +161,6 @@ export default function PostCard({
       `;
     });
 
-    // DOMPurify 最终净化：移除任何残留的 XSS 攻击向量
     return { __html: sanitizeHtml(html) };
   };
 

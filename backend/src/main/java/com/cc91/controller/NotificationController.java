@@ -78,6 +78,17 @@ public class NotificationController {
     }
 
     /**
+     * 删除通知
+     * DELETE /api/notifications/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteNotification(@PathVariable Long id) {
+        Long userId = getCurrentUserId();
+        notificationService.deleteNotification(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("通知已删除"));
+    }
+
+    /**
      * 从 Spring Security 上下文中获取当前登录用户ID
      */
     private Long getCurrentUserId() {
