@@ -14,6 +14,7 @@ import com.cc91.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -555,5 +556,121 @@ class PostServiceTest {
         // Assert
         assertEquals(1, result.getTotalElements());
         assertEquals("Spring 发布帖", result.getContent().get(0).getTitle());
+    }
+
+    // ==================== getMyPosts 方法测试 ====================
+
+    @Test
+    @Transactional
+    void getMyPosts_ReturnsOnlyPublishedPosts() {
+        // Arrange: 创建用户和不同状态的帖子
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(author);
+
+        Post publishedPost = new Post("已发布帖子", "内容1", author.getId());
+        publishedPost.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(publishedPost);
+
+        Post draftPost = new Post("草稿帖子", "内容2", author.getId());
+        draftPost.setStatus("DRAFT");
+        postRepository.saveAndFlush(draftPost);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        List<PostResponse> result = postService.getMyPosts("author");
+
+        // Assert: 只返回已发布帖子
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("已发布帖子", result.get(0).getTitle());
+        assertEquals("PUBLISHED", result.get(0).getStatus());
+    }
+
+    @Test
+    @Transactional
+    void getMyPosts_NoPublishedPosts_ReturnsEmptyList() {
+        // Arrange: 只有草稿
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(author);
+
+        Post draftPost = new Post("草稿帖子", "内容", author.getId());
+        draftPost.setStatus("DRAFT");
+        postRepository.saveAndFlush(draftPost);
+
+        // Act
+        List<PostResponse> result = postService.getMyPosts("author");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getMyPosts_UserNotExists_ThrowsResourceNotFoundException() {
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> postService.getMyPosts("nonexistent")
+        );
+        assertEquals("用户不存在", exception.getMessage());
+    }
+
+    // ==================== getMyDrafts 方法测试 ====================
+
+    @Test
+    @Transactional
+    void getMyDrafts_ReturnsOnlyDraftPosts() {
+        // Arrange: 创建用户和不同状态的帖子
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(author);
+
+        Post publishedPost = new Post("已发布帖子", "内容1", author.getId());
+        publishedPost.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(publishedPost);
+
+        Post draftPost = new Post("草稿帖子", "内容2", author.getId());
+        draftPost.setStatus("DRAFT");
+        postRepository.saveAndFlush(draftPost);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Act
+        List<PostResponse> result = postService.getMyDrafts("author");
+
+        // Assert: 只返回草稿帖子
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("草稿帖子", result.get(0).getTitle());
+        assertEquals("DRAFT", result.get(0).getStatus());
+    }
+
+    @Test
+    @Transactional
+    void getMyDrafts_NoDrafts_ReturnsEmptyList() {
+        // Arrange: 只有已发布帖子
+        User author = new User("author", "author@test.com", passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(author);
+
+        Post publishedPost = new Post("已发布帖子", "内容", author.getId());
+        publishedPost.setStatus("PUBLISHED");
+        postRepository.saveAndFlush(publishedPost);
+
+        // Act
+        List<PostResponse> result = postService.getMyDrafts("author");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getMyDrafts_UserNotExists_ThrowsResourceNotFoundException() {
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> postService.getMyDrafts("nonexistent")
+        );
+        assertEquals("用户不存在", exception.getMessage());
     }
 }
