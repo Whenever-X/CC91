@@ -3,13 +3,17 @@ package com.cc91.service;
 import com.cc91.dto.CreatePostRequest;
 import com.cc91.dto.PostResponse;
 import com.cc91.dto.UpdatePostRequest;
+import com.cc91.entity.Bookmark;
 import com.cc91.entity.Category;
 import com.cc91.entity.Post;
+import com.cc91.entity.PostLike;
 import com.cc91.entity.User;
 import com.cc91.entity.UserProfile;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.PostRepository;
+import com.cc91.repository.PostLikeRepository;
+import com.cc91.repository.BookmarkRepository;
 import com.cc91.repository.UserRepository;
 import com.cc91.repository.UserProfileRepository;
 import com.cc91.repository.CategoryRepository;
@@ -35,13 +39,17 @@ public class PostService {
     private static final Logger logger = LoggerFactory.getLogger(PostService.class);
 
     private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final CategoryRepository categoryRepository;
     private final CommentRepository commentRepository;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, UserProfileRepository userProfileRepository, CategoryRepository categoryRepository, CommentRepository commentRepository) {
+    public PostService(PostRepository postRepository, PostLikeRepository postLikeRepository, BookmarkRepository bookmarkRepository, UserRepository userRepository, UserProfileRepository userProfileRepository, CategoryRepository categoryRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
+        this.postLikeRepository = postLikeRepository;
+        this.bookmarkRepository = bookmarkRepository;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.categoryRepository = categoryRepository;
@@ -77,12 +85,11 @@ public class PostService {
      */
     @Transactional
     public PostResponse getPostById(Long id) {
+        // 原子更新浏览量（避免并发竞态条件）
+        postRepository.incrementViewCount(id);
+
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
-
-        // 增加浏览次数
-        post.setViewCount(post.getViewCount() + 1);
-        postRepository.save(post);
 
         User author = userRepository.findById(post.getAuthorId())
                 .orElseThrow(() -> new ResourceNotFoundException("作者不存在"));
@@ -169,11 +176,116 @@ public class PostService {
     }
 
     /**
-     * 分页查询帖子列表
+     * 切换点赞状态（点赞/取消点赞）
+     */
+    @Transactional
+    public Map<String, Object> toggleLike(String username, Long postId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
+
+        Optional<PostLike> existingLike = postLikeRepository.findByUserIdAndPostId(user.getId(), postId);
+        boolean isLiked;
+
+        if (existingLike.isPresent()) {
+            postLikeRepository.deleteByUserIdAndPostId(user.getId(), postId);
+            isLiked = false;
+            logger.info("取消点赞: userId={}, postId={}", user.getId(), postId);
+        } else {
+            postLikeRepository.save(new PostLike(user.getId(), postId));
+            isLiked = true;
+            logger.info("点赞: userId={}, postId={}", user.getId(), postId);
+        }
+
+        // 重新计算点赞数并更新 Post.likeCount
+        long likeCount = postLikeRepository.countByPostId(postId);
+        post.setLikeCount((int) likeCount);
+        postRepository.save(post);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("isLiked", isLiked);
+        result.put("likeCount", likeCount);
+        return result;
+    }
+
+    /**
+     * 切换收藏状态（收藏/取消收藏）
+     */
+    @Transactional
+    public Map<String, Object> toggleBookmark(String username, Long postId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
+
+        Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserIdAndPostId(user.getId(), postId);
+        boolean isBookmarked;
+
+        if (existingBookmark.isPresent()) {
+            bookmarkRepository.deleteByUserIdAndPostId(user.getId(), postId);
+            isBookmarked = false;
+            logger.info("取消收藏: userId={}, postId={}", user.getId(), postId);
+        } else {
+            bookmarkRepository.save(new Bookmark(user.getId(), postId));
+            isBookmarked = true;
+            logger.info("收藏: userId={}, postId={}", user.getId(), postId);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("isBookmarked", isBookmarked);
+        return result;
+    }
+
+    /**
+     * 获取当前用户收藏的帖子列表
      */
     @Transactional(readOnly = true)
-    public Page<PostResponse> getPostList(int page, int size, String status) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+    public List<PostResponse> getMyBookmarks(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        List<Bookmark> bookmarks = bookmarkRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        if (bookmarks.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> postIds = bookmarks.stream()
+                .map(Bookmark::getPostId)
+                .collect(Collectors.toList());
+
+        List<Post> posts = postRepository.findAllById(postIds);
+
+        // 按 bookmark 顺序排列
+        Map<Long, Post> postMap = posts.stream()
+                .collect(Collectors.toMap(Post::getId, p -> p));
+
+        List<Post> orderedPosts = postIds.stream()
+                .map(postMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return toPostResponseList(orderedPosts);
+    }
+
+    /**
+     * 分页查询帖子列表（支持排序）
+     */
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getPostList(int page, int size, String status, String sort) {
+        Sort sorting;
+        if ("comments".equalsIgnoreCase(sort)) {
+            // 按评论数排序 — 简化方案：按 viewCount DESC 作为近似
+            sorting = Sort.by(Sort.Direction.DESC, "viewCount");
+        } else if ("hot".equalsIgnoreCase(sort)) {
+            sorting = Sort.by(Sort.Direction.DESC, "viewCount");
+        } else {
+            sorting = Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sorting);
         Page<Post> posts;
         if (status == null || status.trim().isEmpty()) {
             posts = postRepository.findAll(pageable);
@@ -182,6 +294,14 @@ public class PostService {
         }
 
         return toPostResponsePage(posts);
+    }
+
+    /**
+     * 分页查询帖子列表（无排序参数，默认按时间倒序）
+     */
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getPostList(int page, int size, String status) {
+        return getPostList(page, size, status, "latest");
     }
 
     /**
@@ -306,6 +426,7 @@ public class PostService {
             );
             String avatar = avatarMap.get(post.getAuthorId());
             response.setAuthorAvatarUrl(normalizeAvatarUrl(avatar));
+            response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount().longValue() : 0L);
             return response;
         });
     }
@@ -375,6 +496,7 @@ public class PostService {
             );
             String avatar = avatarMap.get(post.getAuthorId());
             response.setAuthorAvatarUrl(normalizeAvatarUrl(avatar));
+            response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount().longValue() : 0L);
             return response;
         }).collect(Collectors.toList());
         }
@@ -409,6 +531,8 @@ public class PostService {
         userProfileRepository.findByUserId(post.getAuthorId()).ifPresent(profile -> {
             response.setAuthorAvatarUrl(normalizeAvatarUrl(profile.getAvatarUrl()));
         });
+
+        response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount().longValue() : 0L);
 
         return response;
     }
