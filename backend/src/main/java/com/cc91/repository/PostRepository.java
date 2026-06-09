@@ -82,7 +82,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     /**
      * 原子更新浏览量（避免并发竞态条件）
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     void incrementViewCount(@Param("id") Long id);
 }

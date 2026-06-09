@@ -1,9 +1,11 @@
 package com.cc91.controller;
 
 import com.cc91.dto.ApiResponse;
+import com.cc91.dto.CreateReportRequest;
 import com.cc91.entity.Report;
 import com.cc91.exception.UnauthorizedException;
 import com.cc91.service.ReportService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,14 +34,14 @@ public class ReportController {
      */
     @PostMapping("/reports")
     public ResponseEntity<ApiResponse<Report>> createReport(
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody CreateReportRequest request) {
         String username = getCurrentUsername();
         Report report = reportService.createReport(
                 username,
-                Long.parseLong(body.get("contentId")),
-                body.get("contentType"),
-                body.get("reason"),
-                body.get("description")
+                request.getContentId(),
+                request.getContentType(),
+                request.getReason(),
+                request.getDescription()
         );
         return ResponseEntity.ok(ApiResponse.success("举报提交成功", report));
     }
@@ -68,9 +70,6 @@ public class ReportController {
         return ResponseEntity.ok(ApiResponse.success("举报已处理", report));
     }
 
-    /**
-     * 从 Spring Security 上下文中获取当前登录用户名
-     */
     private String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()) {

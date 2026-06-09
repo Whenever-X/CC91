@@ -67,6 +67,7 @@ public class AdminContentController {
      * PUT /api/admin/posts/{id}/status
      */
     @PutMapping("/posts/{id}/status")
+    @Transactional
     public ResponseEntity<ApiResponse<Void>> updatePostStatus(
             @PathVariable Long id,
             @RequestBody UpdatePostStatusRequest request

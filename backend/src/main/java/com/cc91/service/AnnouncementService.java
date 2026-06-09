@@ -76,17 +76,21 @@ public class AnnouncementService {
 
         announcement = announcementRepository.save(announcement);
 
-        // 通知所有用户新公告
-        List<User> allUsers = userRepository.findAll();
-        for (User user : allUsers) {
-            notificationService.createNotification(
-                    user.getId(), "SYSTEM", "新公告: " + announcement.getTitle(),
-                    announcement.getContent(), announcement.getId()
-            );
+        // 通知所有用户新公告（try-catch 防止通知失败回滚公告保存）
+        try {
+            List<User> allUsers = userRepository.findAll();
+            for (User user : allUsers) {
+                notificationService.createNotification(
+                        user.getId(), "SYSTEM", "新公告: " + announcement.getTitle(),
+                        announcement.getContent(), announcement.getId()
+                );
+            }
+            logger.info("公告创建成功: id={}, title={}, 已通知{}位用户",
+                    announcement.getId(), announcement.getTitle(), allUsers.size());
+        } catch (Exception e) {
+            logger.warn("公告通知发送失败，但公告已保存: id={}, error={}",
+                    announcement.getId(), e.getMessage());
         }
-
-        logger.info("公告创建成功: id={}, title={}, 已通知{}位用户",
-                announcement.getId(), announcement.getTitle(), allUsers.size());
 
         return toDTO(announcement);
     }
