@@ -53,4 +53,14 @@ public class InternalUserController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(users);
     }
+
+    /**
+     * Update user avatar URL (called by File Service after avatar upload).
+     * PUT /api/users/internal/{id}/avatar
+     */
+    @PutMapping("/{id}/avatar")
+    public ResponseEntity<Void> updateAvatar(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        userService.updateAvatarInternal(id, body.get("avatarUrl"));
+        return ResponseEntity.ok().build();
+    }
 }

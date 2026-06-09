@@ -140,6 +140,21 @@ public class UserService {
     }
 
     /**
+     * Update avatar URL directly (called by File Service via internal API).
+     */
+    @Transactional
+    public void updateAvatarInternal(Long userId, String avatarUrl) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    UserProfile p = new UserProfile();
+                    p.setUser(userRepository.findById(userId).orElseThrow());
+                    return p;
+                });
+        profile.setAvatarUrl(avatarUrl);
+        userProfileRepository.save(profile);
+    }
+
+    /**
      * 修改密码
      */
     @Transactional

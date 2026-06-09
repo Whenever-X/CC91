@@ -1,8 +1,8 @@
 # CC91 论坛系统 — 微服务架构设计文档
 
-> **版本**：v2.0
-> **日期**：2026-06-09
-> **状态**：已落地 Phase 1 + Phase 2（注册中心 + 网关 + 用户/论坛/通知服务 + OpenFeign + Resilience4j）
+> **版本**：v3.0
+> **日期**：2026-06-10
+> **状态**：全部服务拆分完成（7 个微服务 + 网关 + 注册中心）
 
 ---
 
@@ -149,7 +149,13 @@ microservices/
 ├── forum-service/          # 论坛微服务 (port 8082)
 │   ├── pom.xml
 │   └── src/main/...
-└── notification-service/   # 通知微服务 (port 8083)
+├── notification-service/   # 通知微服务 (port 8083)
+│   ├── pom.xml
+│   └── src/main/...
+├── content-service/        # 内容微服务 (port 8085)
+│   ├── pom.xml
+│   └── src/main/...
+└── file-service/           # 文件微服务 (port 8086)
     ├── pom.xml
     └── src/main/...
 ```
@@ -175,11 +181,12 @@ cd microservices/eureka-server && mvn spring-boot:run
 | 路由 ID | 匹配路径 | 目标服务 |
 |---------|----------|----------|
 | user-service | /api/auth/\*\*, /api/users/\*\* | lb://user-service |
-| forum-service | /api/posts/\*\*, /api/comments/\*\*, /api/categories/\*\*, /api/announcements/\*\* | lb://forum-service |
-| admin-service | /api/admin/\*\* | lb://forum-service |
+| admin-user-service | /api/admin/users/\*\* | lb://user-service |
+| forum-service | /api/posts/\*\*, /api/comments/\*\*, /api/categories/\*\* | lb://forum-service |
+| admin-content-service | /api/admin/posts/\*\*, /api/admin/comments/\*\* | lb://forum-service |
 | notification-service | /api/notifications/\*\* | lb://notification-service |
-| report-service | /api/reports/\*\* | lb://forum-service |
-| upload-service | /api/upload/\*\* | lb://forum-service |
+| content-service | /api/announcements/\*\*, /api/reports/\*\*, /api/admin/announcements/\*\*, /api/admin/reports/\*\* | lb://content-service |
+| file-service | /api/upload/\*\* | lb://file-service |
 
 - `lb://` 前缀表示通过 Eureka 做客户端负载均衡（Ribbon/LoadBalancer）
 
@@ -213,18 +220,24 @@ mvn spring-boot:run
 cd microservices/eureka-server && mvn spring-boot:run &
 
 # 2. 启动用户微服务
-cd microservices/user-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx mvn spring-boot:run &
+cd microservices/user-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx INTERNAL_TOKEN=xxx mvn spring-boot:run &
 
 # 3. 启动论坛微服务
-cd microservices/forum-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx mvn spring-boot:run &
+cd microservices/forum-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx INTERNAL_TOKEN=xxx mvn spring-boot:run &
 
 # 4. 启动通知微服务
-cd microservices/notification-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx mvn spring-boot:run &
+cd microservices/notification-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx INTERNAL_TOKEN=xxx mvn spring-boot:run &
 
-# 5. 启动网关
+# 5. 启动内容微服务
+cd microservices/content-service && DB_USERNAME=root DB_PASSWORD=xxx JWT_SECRET=xxx INTERNAL_TOKEN=xxx mvn spring-boot:run &
+
+# 6. 启动文件微服务
+cd microservices/file-service && JWT_SECRET=xxx INTERNAL_TOKEN=xxx mvn spring-boot:run &
+
+# 7. 启动网关
 cd microservices/gateway && mvn spring-boot:run &
 
-# 6. 通过网关访问
+# 8. 通过网关访问
 curl http://localhost:9000/api/categories
 curl http://localhost:9000/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
 ```
