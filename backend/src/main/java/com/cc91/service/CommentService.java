@@ -8,6 +8,7 @@ import com.cc91.entity.Post;
 import com.cc91.entity.User;
 import com.cc91.entity.UserProfile;
 import com.cc91.exception.ResourceNotFoundException;
+import com.cc91.util.HtmlSanitizer;
 import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.CommentRepository;
 import com.cc91.repository.PostRepository;
@@ -58,7 +59,7 @@ public class CommentService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
 
-        Comment comment = new Comment(postId, user.getId(), request.getContent(), null);
+        Comment comment = new Comment(postId, user.getId(), HtmlSanitizer.sanitizeContent(request.getContent()), null);
         comment = commentRepository.save(comment);
 
         // 如果评论的不是自己的帖子，通知帖子作者
@@ -92,7 +93,7 @@ public class CommentService {
                 .orElseThrow(() -> new ResourceNotFoundException("评论不存在"));
 
         Comment reply = new Comment(parentComment.getPostId(), user.getId(),
-                                    request.getContent(), commentId);
+                                    HtmlSanitizer.sanitizeContent(request.getContent()), commentId);
         reply = commentRepository.save(reply);
 
         // 通知被回复的评论作者（如果不是自己回复自己）
@@ -131,7 +132,7 @@ public class CommentService {
             throw new UnauthorizedException("无权限编辑此评论");
         }
 
-        comment.setContent(content);
+        comment.setContent(HtmlSanitizer.sanitizeContent(content));
         comment = commentRepository.save(comment);
 
         logger.info("评论更新成功: id={}, author={}", commentId, username);

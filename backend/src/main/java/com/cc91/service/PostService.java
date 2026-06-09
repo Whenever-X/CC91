@@ -10,6 +10,7 @@ import com.cc91.entity.PostLike;
 import com.cc91.entity.User;
 import com.cc91.entity.UserProfile;
 import com.cc91.exception.ResourceNotFoundException;
+import com.cc91.util.HtmlSanitizer;
 import com.cc91.exception.UnauthorizedException;
 import com.cc91.repository.PostRepository;
 import com.cc91.repository.PostLikeRepository;
@@ -68,7 +69,11 @@ public class PostService {
             throw new ResourceNotFoundException("版块不存在");
         }
 
-        Post post = new Post(request.getTitle(), request.getContent(), user.getId());
+        Post post = new Post(
+                HtmlSanitizer.sanitizeContent(request.getTitle()),
+                HtmlSanitizer.sanitizeContent(request.getContent()),
+                user.getId()
+        );
         post.setCategoryId(request.getCategoryId());
         if (request.getStatus() != null) {
             post.setStatus(request.getStatus());
@@ -131,10 +136,10 @@ public class PostService {
 
         // 更新字段
         if (request.getTitle() != null) {
-            post.setTitle(request.getTitle());
+            post.setTitle(HtmlSanitizer.sanitizeContent(request.getTitle()));
         }
         if (request.getContent() != null) {
-            post.setContent(request.getContent());
+            post.setContent(HtmlSanitizer.sanitizeContent(request.getContent()));
         }
         if (request.getCategoryId() != null) {
             // 验证版块是否存在

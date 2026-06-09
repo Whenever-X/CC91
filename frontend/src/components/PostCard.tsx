@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SafeLink from './SafeLink';
+import { sanitizeHtml } from '../utils/sanitize';
 import catAvatar from '../assets/cc98_avatar_cat.png';
 import studentAvatar from '../assets/cc98_avatar_student.png';
 
@@ -160,7 +161,7 @@ export default function PostCard({
       `;
     });
 
-    return { __html: html };
+    return { __html: sanitizeHtml(html) };
   };
 
   return (
