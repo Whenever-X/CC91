@@ -7,9 +7,10 @@ import jakarta.validation.constraints.Size;
  */
 public class UpdatePostRequest {
 
-    @Size(max = 200, message = "标题长度不能超过200个字符")
+    @Size(min = 1, max = 200, message = "标题长度应在1-200个字符之间")
     private String title;
 
+    @Size(max = 50000, message = "内容长度不能超过50000个字符")
     private String content;
 
     private Long categoryId;

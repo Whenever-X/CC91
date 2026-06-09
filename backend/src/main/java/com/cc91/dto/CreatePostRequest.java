@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 public class CreatePostRequest {
 
     @NotBlank(message = "标题不能为空")
-    @Size(max = 200, message = "标题长度不能超过200个字符")
+    @Size(min = 1, max = 200, message = "标题长度应在1-200个字符之间")
     private String title;
 
     @NotBlank(message = "内容不能为空")

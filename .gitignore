@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Uploads
+uploads/
+
 # Maven build output
 target/
 
