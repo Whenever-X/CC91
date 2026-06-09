@@ -110,6 +110,23 @@ public class NotificationService {
     }
 
     /**
+     * 删除通知
+     */
+    @Transactional
+    public void deleteNotification(Long notificationId, Long userId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("通知不存在"));
+
+        if (!notification.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权限删除此通知");
+        }
+
+        notificationRepository.delete(notification);
+
+        logger.info("通知已删除: id={}, userId={}", notificationId, userId);
+    }
+
+    /**
      * 转换为 NotificationDTO
      */
     private NotificationDTO toNotificationDTO(Notification notification) {

@@ -9,6 +9,7 @@ import com.cc91.entity.Post;
 import com.cc91.exception.ResourceNotFoundException;
 import com.cc91.repository.CommentRepository;
 import com.cc91.repository.PostRepository;
+import com.cc91.service.NotificationService;
 import com.cc91.service.PostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +36,16 @@ public class AdminContentController {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PostService postService;
+    private final NotificationService notificationService;
 
     public AdminContentController(PostRepository postRepository,
                                   CommentRepository commentRepository,
-                                  PostService postService) {
+                                  PostService postService,
+                                  NotificationService notificationService) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.postService = postService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -73,7 +77,15 @@ public class AdminContentController {
         post.setStatus(request.getStatus());
         postRepository.save(post);
 
-        logger.info("管理员修改帖子状态: id={}, status={}", id, request.getStatus());
+        // 通知帖子作者状态变更
+        notificationService.createNotification(
+                post.getAuthorId(), "POST_STATUS", "帖子状态变更",
+                "您的帖子「" + post.getTitle() + "」状态已变更为：" + request.getStatus(),
+                post.getId()
+        );
+
+        logger.info("管理员修改帖子状态: id={}, status={}, 已通知作者 authorId={}",
+                id, request.getStatus(), post.getAuthorId());
 
         return ResponseEntity.ok(ApiResponse.success("帖子状态已更新"));
     }
