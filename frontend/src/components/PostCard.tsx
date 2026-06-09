@@ -113,19 +113,16 @@ export default function PostCard({
   };
 
   const handleDislike = () => {
+    // 踩功能仅支持本地模式（无对应后端 API）
     if (disliked) {
       setDislikes(d => d - 1);
       setDisliked(false);
     } else {
       setDislikes(d => d + 1);
       setDisliked(true);
-      if (liked) {
-        if (hasLikeApi) {
-          onToggleLike?.();
-        } else {
-          setLocalLikes(l => l - 1);
-          setLocalLiked(false);
-        }
+      if (liked && !hasLikeApi) {
+        setLocalLikes(l => l - 1);
+        setLocalLiked(false);
       }
     }
   };
