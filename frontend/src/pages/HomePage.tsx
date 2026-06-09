@@ -240,6 +240,26 @@ export default function HomePage() {
           gap: 1.25rem;
         }
 
+        @media (max-width: 640px) {
+          .cc98-board-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+          }
+
+          .cc98-section-title-external {
+            font-size: 1rem;
+          }
+
+          .cc98-sort-btn-group {
+            flex-wrap: wrap;
+          }
+
+          .cc98-sort-btn-group button {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+          }
+        }
+
         /* Sidebar Styling */
         .cc98-sidebar-wrapper {
           display: flex;

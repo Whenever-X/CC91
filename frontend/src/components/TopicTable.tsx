@@ -364,6 +364,40 @@ export default function TopicTable({ posts = [] }: TopicTableProps) {
           border-radius: var(--cc98-radius);
           box-shadow: var(--cc98-shadow);
         }
+
+        /* ========= TopicTable 响应式适配 ========= */
+        @media (max-width: 768px) {
+          .cc98-tl-cell.cc98-tl-author,
+          .cc98-tl-cell.cc98-tl-stats,
+          .cc98-tl-cell.cc98-tl-last {
+            display: none;
+          }
+
+          .cc98-tl-cell {
+            padding: 0.5rem 0.5rem;
+            font-size: 0.85rem;
+          }
+
+          .cc98-topic-link {
+            font-size: 0.85rem;
+            display: block;
+            max-width: calc(100vw - 80px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+
+        @media (max-width: 375px) {
+          .cc98-tl-cell {
+            padding: 0.4rem 0.35rem;
+          }
+
+          .cc98-topic-link {
+            font-size: 0.8rem;
+            max-width: calc(100vw - 70px);
+          }
+        }
       `}</style>
     </table>
   );
