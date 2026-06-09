@@ -126,6 +126,30 @@ export default function Footer() {
           text-align: center;
           color: rgba(255, 255, 255, 0.7);
         }
+
+        @media (max-width: 768px) {
+          .cc98-footer-stats {
+            gap: 0.75rem 1rem;
+            font-size: 0.78rem;
+            justify-content: flex-start;
+          }
+
+          .cc98-footer-links {
+            flex-wrap: wrap;
+            gap: 0.3rem 0.6rem;
+          }
+
+          .cc98-footer {
+            padding: 1.25rem 0;
+          }
+        }
+
+        @media (max-width: 375px) {
+          .cc98-footer-stats {
+            gap: 0.4rem 0.6rem;
+            font-size: 0.72rem;
+          }
+        }
       `}</style>
     </footer>
   );

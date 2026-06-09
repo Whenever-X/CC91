@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import SafeLink from './SafeLink';
 import catAvatar from '../assets/cc98_avatar_cat.png';
 import studentAvatar from '../assets/cc98_avatar_student.png';
+import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
 
 interface PostCardProps {
   id: number;
@@ -130,6 +131,7 @@ export default function PostCard({
   };
 
   // 格式化发帖内容，支持简单的 [quote] BBCode 标签解析
+  // 所有用户输入均经过 HTML 转义 + DOMPurify 双重净化，防止 XSS
   const parsePostContent = (text: string) => {
     if (!text) return { __html: '' };
 
@@ -143,8 +145,9 @@ export default function PostCard({
     const quoteRegex = /\[quote\]([\s\S]*?)\[\/quote\]/gi;
     html = html.replace(quoteRegex, (_, quoteContent) => {
       const userMatch = quoteContent.match(/^([\w\d\u4e00-\u9fa5_-]+)\s+说道：/);
-      const userName = userMatch ? userMatch[1] : '论坛会员';
-      const cleanContent = userMatch
+      // escapeHtml 二次防护：确保用户名不会被注入 HTML
+      const userName = userMatch ? escapeHtml(userMatch[1]) : '论坛会员';
+      const rawContent = userMatch
         ? quoteContent.replace(/^([\w\d\u4e00-\u9fa5_-]+)\s+说道：\n?/, '')
         : quoteContent;
 
@@ -154,13 +157,14 @@ export default function PostCard({
             <span><i class="fa fa-quote-left"></i> 引用自用户 @${userName} 的发言：</span>
           </div>
           <div style="padding-top: 0.4rem; border-top: 1px dashed var(--border-color); font-style: italic;">
-            ${cleanContent}
+            ${rawContent}
           </div>
         </div>
       `;
     });
 
-    return { __html: html };
+    // DOMPurify 最终净化：移除任何残留的 XSS 攻击向量
+    return { __html: sanitizeHtml(html) };
   };
 
   return (
@@ -699,6 +703,93 @@ export default function PostCard({
           margin-bottom: 1rem;
           font-size: 0.88rem;
           color: var(--text-main);
+        }
+
+        /* ========= PostCard 响应式适配 ========= */
+        @media (max-width: 768px) {
+          .cc98-post-card {
+            flex-direction: column;
+          }
+
+          .cc98-post-sidebar {
+            width: 100%;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            border-right: none;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+            border-top-left-radius: calc(var(--cc98-radius) - 1px);
+            border-top-right-radius: calc(var(--cc98-radius) - 1px);
+            border-bottom-left-radius: 0;
+          }
+
+          .cc98-post-sidebar-left {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+            width: auto;
+            flex: 1;
+          }
+
+          .cc98-post-sidebar-right {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+            width: auto;
+            flex-shrink: 0;
+          }
+
+          .cc98-post-user-name {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+            max-width: 110px;
+          }
+
+          .cc98-post-avatar {
+            width: 36px;
+            height: 36px;
+          }
+
+          .cc98-user-stats {
+            display: none;
+          }
+
+          .cc98-sidebar-buttons {
+            display: none;
+          }
+
+          .cc98-gender-badge {
+            position: static;
+            display: inline-flex;
+            width: 1.1rem;
+            height: 1.1rem;
+            font-size: 0.65rem;
+          }
+
+          .cc98-post-content-area {
+            padding: 0.75rem;
+          }
+
+          .cc98-post-meta-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+          }
+
+          .cc98-post-time {
+            font-size: 0.72rem;
+          }
+
+          .cc98-post-body {
+            font-size: 0.88rem;
+          }
+
+          .cc98-post-actions {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: flex-start;
+          }
         }
       `}</style>
     </div>
