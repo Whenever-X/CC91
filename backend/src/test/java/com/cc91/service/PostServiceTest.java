@@ -64,11 +64,14 @@ class PostServiceTest {
     @Test
     @Transactional
     void createPost_ValidRequest_CreatesPost() {
-        // Arrange: 创建一个用户
+        // Arrange: 创建一个用户和版块
         User user = new User("author", "author@example.com", passwordEncoder.encode("password123"));
         userRepository.saveAndFlush(user);
 
-        CreatePostRequest request = new CreatePostRequest("测试标题", "测试内容");
+        Category category = new Category("测试版块", "测试版块描述", 0);
+        categoryRepository.save(category);
+
+        CreatePostRequest request = new CreatePostRequest("测试标题", "测试内容", category.getId());
 
         // Act: 创建帖子
         PostResponse result = postService.createPost("author", request);
