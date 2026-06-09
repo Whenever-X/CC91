@@ -6,3 +6,9 @@ export function sanitizeHtml(dirty: string): string {
     ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
   });
 }
+
+export function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
