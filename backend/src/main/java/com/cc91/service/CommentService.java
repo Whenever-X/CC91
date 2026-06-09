@@ -117,6 +117,29 @@ public class CommentService {
     }
 
     /**
+     * 编辑评论
+     */
+    @Transactional
+    public CommentResponse updateComment(String username, Long commentId, String content) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("评论不存在"));
+
+        if (!comment.getAuthorId().equals(user.getId())) {
+            throw new UnauthorizedException("无权限编辑此评论");
+        }
+
+        comment.setContent(content);
+        comment = commentRepository.save(comment);
+
+        logger.info("评论更新成功: id={}, author={}", commentId, username);
+
+        return toCommentResponse(comment, user.getUsername());
+    }
+
+    /**
      * 删除评论（软删除）
      */
     @Transactional
