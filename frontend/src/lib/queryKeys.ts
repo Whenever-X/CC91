@@ -72,5 +72,7 @@ export const queryKeys = {
       : ['admin', 'posts', 'all'] as const,
     users: () => ['admin', 'users'] as const,
     stats: () => ['admin', 'stats'] as const,
+    comments: () => ['admin', 'comments'] as const,
+    reports: () => ['admin', 'reports'] as const,
   },
 };
