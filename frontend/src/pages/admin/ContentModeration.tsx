@@ -4,8 +4,10 @@ import {
   adminGetPosts, adminUpdatePostStatus, adminDeletePost,
   adminGetComments, adminDeleteComment
 } from '../../api/admin';
-import { adminGetReports, adminHandleReport } from '../../api/report';
+import { adminGetReports, adminHandleReport, type ReportStatus } from '../../api/report';
 import ErrorMessage from '../../components/ErrorMessage';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 import { queryKeys } from '../../lib/queryKeys';
 
 type TabType = 'posts' | 'comments' | 'reports';
@@ -15,10 +17,30 @@ type TabType = 'posts' | 'comments' | 'reports';
  */
 export default function ContentModeration() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // 确认对话框状态
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'default';
+    onConfirm: () => void;
+  }>({ title: '', message: '', variant: 'default', onConfirm: () => {} });
+
+  const openConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    variant: 'danger' | 'warning' | 'default' = 'danger'
+  ) => {
+    setConfirmConfig({ title, message, variant, onConfirm });
+    setConfirmOpen(true);
+  };
 
   // 帖子列表
   const { data: posts = [], isLoading: postsLoading } = useQuery({
@@ -29,14 +51,14 @@ export default function ContentModeration() {
 
   // 评论列表
   const { data: comments = [], isLoading: commentsLoading } = useQuery({
-    queryKey: ['admin', 'comments'],
+    queryKey: queryKeys.admin.comments(),
     queryFn: adminGetComments,
     enabled: activeTab === 'comments',
   });
 
   // 举报列表
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: ['admin', 'reports'],
+    queryKey: queryKeys.admin.reports(),
     queryFn: adminGetReports,
     enabled: activeTab === 'reports',
   });
@@ -70,7 +92,7 @@ export default function ContentModeration() {
   const deleteCommentMutation = useMutation({
     mutationFn: adminDeleteComment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'comments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.comments() });
       setSuccess('评论删除成功');
     },
     onError: (err: any) => {
@@ -80,10 +102,10 @@ export default function ContentModeration() {
 
   // 处理举报
   const handleReportMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'RESOLVED' | 'DISMISSED' }) =>
+    mutationFn: ({ id, status }: { id: number; status: Extract<ReportStatus, 'RESOLVED' | 'REVIEWED'> }) =>
       adminHandleReport(id, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports() });
       setSuccess('举报处理成功');
     },
     onError: (err: any) => {
@@ -91,24 +113,43 @@ export default function ContentModeration() {
     },
   });
 
-  const handleResolveReport = async (report: any) => {
-    if (!confirm(`确定要处理此举报并删除该内容吗？此操作不可恢复。`)) return;
-    
-    try {
-      if (report.contentType === 'POST') {
-        await deletePostMutation.mutateAsync(report.contentId);
-      } else {
-        await deleteCommentMutation.mutateAsync(report.contentId);
-      }
-      await handleReportMutation.mutateAsync({ id: report.id, status: 'RESOLVED' });
-    } catch (err: any) {
-      setError(err.response?.data?.message || '操作失败');
+  const handleResolveReport = (report: any) => {
+    // F-08 修复: 检查 contentId 是否存在
+    if (report.contentId == null || report.contentId === undefined) {
+      setError('无法获取被举报内容的 ID，操作失败');
+      return;
     }
+    openConfirm(
+      '处理举报',
+      '确定要处理此举报并删除该内容吗？此操作不可恢复。',
+      async () => {
+        setConfirmOpen(false);
+        try {
+          if (report.contentType === 'POST') {
+            await deletePostMutation.mutateAsync(report.contentId);
+          } else if (report.contentType === 'COMMENT') {
+            await deleteCommentMutation.mutateAsync(report.contentId);
+          }
+          await handleReportMutation.mutateAsync({ id: report.id, status: 'RESOLVED' });
+          showToast('举报已处理，相关内容已删除', 'success');
+        } catch (err: any) {
+          setError(err.response?.data?.message || '操作失败');
+        }
+      },
+      'danger'
+    );
   };
 
   const handleDismissReport = (reportId: number) => {
-    if (!confirm('确定要忽略该举报吗？')) return;
-    handleReportMutation.mutate({ id: reportId, status: 'DISMISSED' });
+    openConfirm(
+      '忽略举报',
+      '确定要忽略该举报吗？',
+      () => {
+        setConfirmOpen(false);
+        handleReportMutation.mutate({ id: reportId, status: 'REVIEWED' });
+      },
+      'default'
+    );
   };
 
   const handleStatusChange = (postId: number, newStatus: string) => {
@@ -116,14 +157,36 @@ export default function ContentModeration() {
   };
 
   const handleDeletePost = (postId: number, title: string) => {
-    if (!confirm(`确定要删除帖子「${title}」吗？`)) return;
-    deletePostMutation.mutate(postId);
+    if (postId == null) {
+      setError('帖子 ID 无效');
+      return;
+    }
+    openConfirm(
+      '删除帖子',
+      `确定要删除帖子「${title}」吗？`,
+      () => {
+        setConfirmOpen(false);
+        deletePostMutation.mutate(postId);
+      },
+      'danger'
+    );
   };
 
   const handleDeleteComment = (commentId: number, content: string) => {
+    if (commentId == null) {
+      setError('评论 ID 无效');
+      return;
+    }
     const preview = content.length > 30 ? content.substring(0, 30) + '...' : content;
-    if (!confirm(`确定要删除评论「${preview}」吗？`)) return;
-    deleteCommentMutation.mutate(commentId);
+    openConfirm(
+      '删除评论',
+      `确定要删除评论「${preview}」吗？`,
+      () => {
+        setConfirmOpen(false);
+        deleteCommentMutation.mutate(commentId);
+      },
+      'danger'
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -487,6 +550,15 @@ export default function ContentModeration() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

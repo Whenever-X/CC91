@@ -1,5 +1,9 @@
 import client from './client';
-import type { Post } from './post';
+import type { PageResponse, Post } from './post';
+
+function unwrapList<T>(payload: T[] | PageResponse<T>): T[] {
+  return Array.isArray(payload) ? payload : payload.content;
+}
 
 /**
  * Admin user info type
@@ -25,12 +29,12 @@ export interface UpdatePostStatusRequest {
 
 /**
  * Get all posts (with optional status filter)
- * GET /api/admin/posts?status= - backend returns List directly
+ * GET /api/admin/posts?status= - backend returns Spring Page
  */
 export async function adminGetPosts(status?: string): Promise<Post[]> {
   const params = status ? { status } : {};
-  const response = await client.get<Post[]>('/admin/posts', { params });
-  return response.data;
+  const response = await client.get<Post[] | PageResponse<Post>>('/admin/posts', { params });
+  return unwrapList(response.data);
 }
 
 /**
@@ -66,11 +70,11 @@ export interface AdminComment {
 
 /**
  * Get all comments (admin)
- * GET /api/admin/comments
+ * GET /api/admin/comments - backend returns Spring Page
  */
 export async function adminGetComments(): Promise<AdminComment[]> {
-  const response = await client.get<AdminComment[]>('/admin/comments');
-  return response.data;
+  const response = await client.get<AdminComment[] | PageResponse<AdminComment>>('/admin/comments');
+  return unwrapList(response.data);
 }
 
 /**
@@ -85,11 +89,11 @@ export async function adminDeleteComment(id: number): Promise<void> {
 
 /**
  * Get all users
- * GET /api/admin/users - backend returns List directly
+ * GET /api/admin/users - backend returns Spring Page
  */
 export async function adminGetUsers(): Promise<AdminUser[]> {
-  const response = await client.get<AdminUser[]>('/admin/users');
-  return response.data;
+  const response = await client.get<AdminUser[] | PageResponse<AdminUser>>('/admin/users');
+  return unwrapList(response.data);
 }
 
 /**

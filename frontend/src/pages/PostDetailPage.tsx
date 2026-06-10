@@ -11,6 +11,8 @@ import { queryKeys } from '../lib/queryKeys';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PostCard from '../components/PostCard';
 import ReportDialog from '../components/ReportDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 /**
  * CC98 风格帖子详情/阅读楼层页面
@@ -20,9 +22,12 @@ export default function PostDetailPage() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
-  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
 
   const postId = id ? parseInt(id, 10) : 0;
 
@@ -53,7 +58,6 @@ export default function PostDetailPage() {
       navigate('/posts');
     },
     onError: (err: any) => {
-      setIsDeleting(false);
       setDeleteError(err.response?.data?.message || '删除主题帖失败');
     },
   });
@@ -95,14 +99,14 @@ export default function PostDetailPage() {
     mutationFn: (data: { contentType: 'POST' | 'COMMENT'; contentId: number; reason: string; description?: string }) =>
       submitReport(data),
     onSuccess: () => {
-      alert('举报提交成功，感谢您的配合！');
+      showToast('举报提交成功，感谢您的配合！', 'success');
       setIsReportOpen(false);
     },
   });
 
   const handleReportPost = () => {
     if (!currentUser) {
-      alert('请先登录！');
+      showToast('请先登录！', 'info');
       navigate('/login');
       return;
     }
@@ -118,12 +122,14 @@ export default function PostDetailPage() {
     });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!post) return;
-    if (!confirm('确定要删除这篇帖子吗？此操作不可恢复。')) return;
-
-    setIsDeleting(true);
-    deleteMutation.mutate(post.id);
+    setConfirmMessage('确定要删除这篇帖子吗？此操作不可恢复。');
+    setConfirmAction(() => () => {
+      setConfirmOpen(false);
+      deleteMutation.mutate(post.id);
+    });
+    setConfirmOpen(true);
   };
 
   const handleEdit = () => {
@@ -132,7 +138,7 @@ export default function PostDetailPage() {
 
   const handleFavoriteToggle = () => {
     if (!currentUser) {
-      alert('请先登录！');
+      showToast('请先登录！', 'info');
       navigate('/login');
       return;
     }
@@ -141,7 +147,7 @@ export default function PostDetailPage() {
 
   const handleLikeToggle = () => {
     if (!currentUser) {
-      alert('请先登录！');
+      showToast('请先登录！', 'info');
       navigate('/login');
       return;
     }
@@ -247,7 +253,7 @@ export default function PostDetailPage() {
           currentUserCanModify={isAuthor}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          isDeleting={isDeleting}
+          isDeleting={deleteMutation.isPending}
           likeCount={post.likeCount}
           isLikedByCurrentUser={post.isLikedByCurrentUser}
           isBookmarkedByCurrentUser={post.isBookmarkedByCurrentUser}
@@ -350,6 +356,16 @@ export default function PostDetailPage() {
           font-size: 0.9rem;
         }
       `}</style>
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="删除帖子"
+        message={confirmMessage}
+        variant="danger"
+        onConfirm={confirmAction}
+        onCancel={() => setConfirmOpen(false)}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

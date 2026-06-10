@@ -13,6 +13,8 @@ import { submitReport } from '../api/report';
 import { queryKeys } from '../lib/queryKeys';
 import PostCard from './PostCard';
 import ReportDialog from './ReportDialog';
+import ConfirmDialog from './ConfirmDialog';
+import { useToast } from './Toast';
 
 interface CommentSectionProps {
   postId: number;
@@ -92,8 +94,13 @@ export default function CommentSection({
 }: CommentSectionProps) {
   const { user: currentUser, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [error, setError] = useState('');
+
+  // 确认对话框状态
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmCommentId, setConfirmCommentId] = useState<number | null>(null);
   
   // Track which comment has an open reply form
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<number | null>(null);
@@ -175,7 +182,7 @@ export default function CommentSection({
     mutationFn: (data: { contentType: 'POST' | 'COMMENT'; contentId: number; reason: string; description?: string }) =>
       submitReport(data),
     onSuccess: () => {
-      alert('举报提交成功，感谢您的配合！');
+      showToast('举报提交成功，感谢您的配合！', 'success');
       setIsReportOpen(false);
     },
   });
@@ -228,8 +235,8 @@ export default function CommentSection({
 
   // 删除某楼层评论
   const handleDeleteComment = (commentId: number) => {
-    if (!confirm('确定要删除这条评论吗？')) return;
-    deleteCommentMutation.mutate(commentId);
+    setConfirmCommentId(commentId);
+    setConfirmOpen(true);
   };
 
   if (isLoading) {
@@ -570,6 +577,21 @@ export default function CommentSection({
           font-weight: 500;
         }
       `}</style>
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="删除评论"
+        message="确定要删除这条评论吗？"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          if (confirmCommentId !== null) {
+            deleteCommentMutation.mutate(confirmCommentId);
+          }
+        }}
+        onCancel={() => setConfirmOpen(false)}
+        isLoading={deleteCommentMutation.isPending}
+      />
     </div>
   );
 }
