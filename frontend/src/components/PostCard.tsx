@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import SafeLink from './SafeLink';
-import { sanitizeHtml } from '../utils/sanitize';
+import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
+import { useToast } from './Toast';
 import catAvatar from '../assets/cc98_avatar_cat.png';
 import studentAvatar from '../assets/cc98_avatar_student.png';
-import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
 
 interface PostCardProps {
   id: number;
@@ -90,6 +90,8 @@ export default function PostCard({
   const [dislikes, setDislikes] = useState(hash % 3);
   const [localLiked, setLocalLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
+
+  const { showToast } = useToast();
 
   const hasLikeApi = onToggleLike !== undefined;
   const likes = hasLikeApi ? (likeCount ?? 0) : localLikes;
@@ -205,10 +207,10 @@ export default function PostCard({
           </div>
 
           <div className="cc98-sidebar-buttons">
-            <button className="cc98-sidebar-btn" onClick={() => alert(`关注了 ${authorUsername}`)}>
+            <button className="cc98-sidebar-btn" onClick={() => showToast(`关注了 ${authorUsername}`, 'success')}>
               关注
             </button>
-            <button className="cc98-sidebar-btn" onClick={() => alert(`准备私信给 ${authorUsername}`)}>
+            <button className="cc98-sidebar-btn" onClick={() => showToast(`准备私信给 ${authorUsername}`, 'info')}>
               私信
             </button>
           </div>

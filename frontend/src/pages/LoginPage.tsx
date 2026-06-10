@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from '../components/ErrorMessage';
+import { useToast } from '../components/Toast';
 import client from '../api/client';
 
 /**
@@ -10,6 +11,7 @@ import client from '../api/client';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { showToast } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,6 +20,12 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!username.trim() || !password.trim()) {
+      setError('请输入用户名和密码');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -42,8 +50,7 @@ export default function LoginPage() {
         userRole = userResponse.data.role || 'USER';
         avatarUrl = userResponse.data.avatarUrl || null;
       } catch (err) {
-        // If user info fetch fails, default to regular user
-        console.error('Failed to fetch user role', err);
+        showToast('无法获取用户权限信息，部分功能可能受限，请刷新页面重试', 'error');
       }
 
       login(username, accessToken, userRole, avatarUrl);

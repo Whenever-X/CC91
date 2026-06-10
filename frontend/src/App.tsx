@@ -33,6 +33,7 @@ import ContentModeration from './pages/admin/ContentModeration';
 import UserManage from './pages/admin/UserManage';
 import AnnouncementManage from './pages/admin/AnnouncementManage';
 import AnnouncementDetailPage from './pages/AnnouncementDetailPage';
+import { ToastProvider } from './components/Toast';
 import { queryClient } from './lib/queryClient';
 
 function AdminRoutes() {
@@ -49,6 +50,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
+          <ToastProvider>
           <ErrorBoundary>
           <Routes>
             <Route path="/" element={<Layout><Outlet /></Layout>}>
@@ -178,6 +180,7 @@ function App() {
             </Route>
           </Routes>
           </ErrorBoundary>
+          </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
