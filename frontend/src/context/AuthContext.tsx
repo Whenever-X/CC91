@@ -19,26 +19,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
+  const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('user');
-
-    if (token && storedUser) {
+    if (storedUser) {
+      try { return JSON.parse(storedUser); } catch { return null; }
+    }
+    return null;
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('access_token');
+  });
+  const [isAdmin, setIsAdmin] = useState(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        setUser(userData);
-        setIsAuthenticated(true);
-        setIsAdmin(userData.role === 'ADMIN');
-      } catch {
-        localStorage.removeItem('user');
-        localStorage.removeItem('access_token');
-      }
+        return userData.role === 'ADMIN';
+      } catch { return false; }
     }
-  }, []);
+    return false;
+  });
 
   const login = (username: string, accessToken: string, role: string = 'USER', avatarUrl?: string | null) => {
     const userData: User = { username, email: '', role, avatarUrl };
