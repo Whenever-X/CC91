@@ -34,7 +34,7 @@ spring:
         - id: file-service
           uri: lb://file-service
           predicates:
-            - Path=/api/upload/**
+            - Path=/api/upload/**, /uploads/**
 
 eureka:
   client:

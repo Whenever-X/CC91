@@ -36,6 +36,7 @@ public class FileUploadController {
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
+    private static final Path UPLOAD_ROOT = Path.of(System.getProperty("user.dir"), "uploads");
 
     private final UserServiceClient userServiceClient;
     private final JwtUtil jwtUtil;
@@ -64,7 +65,7 @@ public class FileUploadController {
         String filename = generateFilename(file);
 
         // Save to uploads/avatars/
-        Path uploadDir = Path.of("uploads/avatars");
+        Path uploadDir = UPLOAD_ROOT.resolve("avatars");
         Files.createDirectories(uploadDir);
         Path filePath = uploadDir.resolve(filename);
         file.transferTo(filePath.toFile());
@@ -108,7 +109,7 @@ public class FileUploadController {
         String filename = generateFilename(file);
 
         // Save to uploads/images/
-        Path uploadDir = Path.of("uploads/images");
+        Path uploadDir = UPLOAD_ROOT.resolve("images");
         Files.createDirectories(uploadDir);
         Path filePath = uploadDir.resolve(filename);
         file.transferTo(filePath.toFile());

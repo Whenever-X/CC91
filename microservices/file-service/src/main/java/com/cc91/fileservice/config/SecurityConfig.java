@@ -85,6 +85,8 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Serve uploaded files publicly
+                        .requestMatchers("/uploads/**").permitAll()
                         // All upload endpoints require authentication
                         .requestMatchers("/api/upload/**").authenticated()
                         // All other requests require authentication
