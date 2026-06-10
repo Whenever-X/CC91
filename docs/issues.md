@@ -102,3 +102,12 @@
 ### F-16 管理后台导航入口权限确认
 - [x] **文件**: `Header.tsx`
 - **确认**: 导航栏"管理后台"入口已正确被 `{isAdmin && ...}` 守卫，桌面端和移动端均无泄漏
+
+### F-17 后端 Spring Page 响应导致管理后台崩溃
+- [x] **文件**: `admin.ts`、`report.ts`、`ContentModeration.tsx`
+- **根因**: 后端管理 API 返回 Spring `Page<T>` 对象 `{ content: [...], totalPages, ... }`，前端直接当作数组 `.map()` 运行时崩溃
+- **修复**:
+  1. `admin.ts`：新增 `unwrapList` 工具函数，自动解包 `PageResponse<T>` 的 `content` 字段
+  2. `report.ts`：新增 `unwrapList` + `normalizeReport`，兼容后端不同字段名（`targetType`/`targetId`/`adminComment`）
+  3. `ContentModeration.tsx`：导入 `ReportStatus` 类型以匹配举报处理
+- **测试**: 新增 `admin.test.ts`、`report.test.ts`
