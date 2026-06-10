@@ -52,38 +52,29 @@ export default function ConfirmDialog({
         : 'cc98-confirm-btn-primary';
 
   return (
-    <div className="cc98-modal-overlay" onClick={onCancel}>
+    <div className="cc98-confirm-overlay" onClick={onCancel}>
       <div
-        className="cc98-modal-content"
+        className="cc98-confirm-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '420px', width: '90%' }}
       >
-        <div className="cc98-modal-header">
+        <div className="cc98-confirm-header">
           <h3>{title}</h3>
-          <button className="cc98-modal-close" onClick={onCancel} aria-label="关闭">&times;</button>
         </div>
 
-        <div className="cc98-modal-body" style={{ padding: '1.5rem' }}>
-          <p style={{ margin: '0 0 1.5rem 0', lineHeight: 1.6, color: 'var(--text-main)' }}>
-            {message}
-          </p>
+        <div className="cc98-confirm-body">
+          <p className="cc98-confirm-message">{message}</p>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <div className="cc98-confirm-actions">
             <button
-              className="btn btn-sm"
+              className="cc98-confirm-btn cc98-confirm-btn-cancel"
               onClick={onCancel}
               disabled={isLoading}
-              style={{
-                border: '1px solid var(--color-border)',
-                background: 'transparent',
-                color: 'var(--text-main)',
-              }}
             >
               {cancelLabel}
             </button>
             <button
               ref={confirmBtnRef}
-              className={`btn btn-sm ${confirmBtnClass}`}
+              className={`cc98-confirm-btn ${confirmBtnClass}`}
               onClick={onConfirm}
               disabled={isLoading}
             >
@@ -94,53 +85,112 @@ export default function ConfirmDialog({
       </div>
 
       <style>{`
-        .cc98-confirm-btn-primary {
-          background-color: var(--primary-color);
-          color: white;
-          border: none;
-          padding: 0.4rem 1.25rem;
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          font-weight: 500;
-          transition: opacity 0.2s;
+        /* ===== Overlay 遮罩层 ===== */
+        .cc98-confirm-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 10000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.5);
+          animation: cc98-overlay-in 0.15s ease-out;
         }
-        .cc98-confirm-btn-primary:hover:not(:disabled) {
-          opacity: 0.85;
-        }
-
-        .cc98-confirm-btn-danger {
-          background-color: #e74c3c;
-          color: white;
-          border: none;
-          padding: 0.4rem 1.25rem;
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          font-weight: 500;
-          transition: opacity 0.2s;
-        }
-        .cc98-confirm-btn-danger:hover:not(:disabled) {
-          opacity: 0.85;
+        @keyframes cc98-overlay-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
 
-        .cc98-confirm-btn-warning {
-          background-color: #f39c12;
-          color: white;
-          border: none;
-          padding: 0.4rem 1.25rem;
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          font-weight: 500;
-          transition: opacity 0.2s;
+        /* ===== Panel 面板 ===== */
+        .cc98-confirm-panel {
+          background: var(--card-bg, #fff);
+          border-radius: 12px;
+          box-shadow:
+            0 4px 24px rgba(0, 0, 0, 0.18),
+            0 0 0 1px rgba(0, 0, 0, 0.06);
+          max-width: 420px;
+          width: 90vw;
+          overflow: hidden;
+          animation: cc98-panel-in 0.2s ease-out;
         }
-        .cc98-confirm-btn-warning:hover:not(:disabled) {
-          opacity: 0.85;
+        @keyframes cc98-panel-in {
+          from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+          to   { opacity: 1; transform: scale(1)     translateY(0); }
         }
 
-        .cc98-confirm-btn-primary:disabled,
-        .cc98-confirm-btn-danger:disabled,
-        .cc98-confirm-btn-warning:disabled {
+        /* ===== Header ===== */
+        .cc98-confirm-header {
+          padding: 1rem 1.5rem;
+          background: var(--primary-color, #336699);
+          color: #fff;
+          font-size: 1.05rem;
+          font-weight: 600;
+        }
+        .cc98-confirm-header h3 {
+          margin: 0;
+          font-size: inherit;
+        }
+
+        /* ===== Body ===== */
+        .cc98-confirm-body {
+          padding: 1.5rem;
+        }
+        .cc98-confirm-message {
+          margin: 0 0 1.5rem 0;
+          line-height: 1.65;
+          color: var(--text-main, #333);
+          font-size: 0.95rem;
+        }
+
+        /* ===== Actions ===== */
+        .cc98-confirm-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.75rem;
+        }
+
+        /* ===== Buttons ===== */
+        .cc98-confirm-btn {
+          padding: 0.45rem 1.4rem;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.15s, opacity 0.15s;
+          border: none;
+        }
+        .cc98-confirm-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+        .cc98-confirm-btn-cancel {
+          background: transparent;
+          color: var(--text-main, #333);
+          border: 1px solid var(--border-color, #d1d5db);
+        }
+        .cc98-confirm-btn-cancel:hover:not(:disabled) {
+          background: var(--quote-bg, #f3f4f6);
+        }
+        .cc98-confirm-btn-primary {
+          background-color: var(--primary-color, #336699);
+          color: #fff;
+        }
+        .cc98-confirm-btn-primary:hover:not(:disabled) {
+          filter: brightness(1.1);
+        }
+        .cc98-confirm-btn-danger {
+          background-color: #e74c3c;
+          color: #fff;
+        }
+        .cc98-confirm-btn-danger:hover:not(:disabled) {
+          background-color: #c0392b;
+        }
+        .cc98-confirm-btn-warning {
+          background-color: #f39c12;
+          color: #fff;
+        }
+        .cc98-confirm-btn-warning:hover:not(:disabled) {
+          background-color: #e67e22;
         }
       `}</style>
     </div>
