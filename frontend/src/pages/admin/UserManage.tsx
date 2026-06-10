@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminGetUsers, adminBanUser, adminUnbanUser, adminUpdateUserRole } from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { queryKeys } from '../../lib/queryKeys';
 
 /**
@@ -13,6 +14,25 @@ export default function UserManage() {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // 确认对话框状态
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'default';
+    onConfirm: () => void;
+  }>({ title: '', message: '', variant: 'default', onConfirm: () => {} });
+
+  const openConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    variant: 'danger' | 'warning' | 'default' = 'danger'
+  ) => {
+    setConfirmConfig({ title, message, variant, onConfirm });
+    setConfirmOpen(true);
+  };
 
   // 使用 React Query 获取用户列表
   const { data: users = [], isLoading } = useQuery({
@@ -66,8 +86,15 @@ export default function UserManage() {
   });
 
   const handleBan = (userId: number, username: string) => {
-    if (!confirm(`确定要封禁用户「${username}」吗？`)) return;
-    banMutation.mutate({ userId, username });
+    openConfirm(
+      '封禁用户',
+      `确定要封禁用户「${username}」吗？`,
+      () => {
+        setConfirmOpen(false);
+        banMutation.mutate({ userId, username });
+      },
+      'danger'
+    );
   };
 
   const handleUnban = (userId: number, username: string) => {
@@ -77,12 +104,27 @@ export default function UserManage() {
   const handleRoleChange = (userId: number, username: string, newRole: string, currentRole: string) => {
     if (newRole === currentRole) return;
     if (username === currentUser?.username) {
-      if (!confirm('警告：修改自己的角色可能导致您失去管理权限，确定继续吗？')) return;
+      openConfirm(
+        '警告',
+        '修改自己的角色可能导致您失去管理权限，确定继续吗？',
+        () => {
+          setConfirmOpen(false);
+          roleMutation.mutate({ userId, role: newRole, username });
+        },
+        'warning'
+      );
     } else {
       const label = newRole === 'ADMIN' ? '管理员' : '普通用户';
-      if (!confirm(`确定要将用户「${username}」的角色修改为「${label}」吗？`)) return;
+      openConfirm(
+        '修改角色',
+        `确定要将用户「${username}」的角色修改为「${label}」吗？`,
+        () => {
+          setConfirmOpen(false);
+          roleMutation.mutate({ userId, role: newRole, username });
+        },
+        'warning'
+      );
     }
-    roleMutation.mutate({ userId, role: newRole, username });
   };
 
   return (
@@ -189,6 +231,15 @@ export default function UserManage() {
         </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
