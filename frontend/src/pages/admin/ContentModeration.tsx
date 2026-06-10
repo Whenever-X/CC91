@@ -4,7 +4,7 @@ import {
   adminGetPosts, adminUpdatePostStatus, adminDeletePost,
   adminGetComments, adminDeleteComment
 } from '../../api/admin';
-import { adminGetReports, adminHandleReport } from '../../api/report';
+import { adminGetReports, adminHandleReport, type ReportStatus } from '../../api/report';
 import ErrorMessage from '../../components/ErrorMessage';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useToast } from '../../components/Toast';
@@ -102,7 +102,7 @@ export default function ContentModeration() {
 
   // 处理举报
   const handleReportMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'RESOLVED' | 'DISMISSED' }) =>
+    mutationFn: ({ id, status }: { id: number; status: Extract<ReportStatus, 'RESOLVED' | 'REVIEWED'> }) =>
       adminHandleReport(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.reports() });
@@ -146,7 +146,7 @@ export default function ContentModeration() {
       '确定要忽略该举报吗？',
       () => {
         setConfirmOpen(false);
-        handleReportMutation.mutate({ id: reportId, status: 'DISMISSED' });
+        handleReportMutation.mutate({ id: reportId, status: 'REVIEWED' });
       },
       'default'
     );
