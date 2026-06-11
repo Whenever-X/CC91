@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   adminGetPosts, adminUpdatePostStatus, adminDeletePost,
@@ -40,6 +40,19 @@ export default function ContentModeration() {
     queryFn: adminGetReports,
     enabled: activeTab === 'reports',
   });
+
+  // 举报页加载评论列表，用于建立 commentId -> postId 映射
+  const { data: reportComments = [] } = useQuery({
+    queryKey: ['admin', 'comments'],
+    queryFn: adminGetComments,
+    enabled: activeTab === 'reports',
+  });
+
+  const commentPostMap = useMemo(() => {
+    const map = new Map<number, number>();
+    reportComments.forEach(c => map.set(c.id, c.postId));
+    return map;
+  }, [reportComments]);
 
   // 更新帖子状态
   const statusMutation = useMutation({
@@ -414,9 +427,22 @@ export default function ContentModeration() {
                           <td style={{ maxWidth: '300px' }}>
                             <div style={{ fontWeight: '500' }}>
                               {report.targetType === 'POST' ? '帖子' : '评论'} ID：
-                              <a href={`/posts/${report.targetId}`} target="_blank" rel="noopener noreferrer">
-                                #{report.targetId}
-                              </a>
+                              {(() => {
+                                const postId = report.targetType === 'POST'
+                                  ? report.targetId
+                                  : commentPostMap.get(report.targetId);
+                                return postId ? (
+                                  <a
+                                    href={`/posts/${postId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    #{report.targetId}
+                                  </a>
+                                ) : (
+                                  <span>#{report.targetId}</span>
+                                );
+                              })()}
                             </div>
                             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
                               举报时间：{new Date(report.createdAt).toLocaleString('zh-CN')}

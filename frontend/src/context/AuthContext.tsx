@@ -24,8 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const storedUser = localStorage.getItem('user');
+    const token = sessionStorage.getItem('access_token');
+    const storedUser = sessionStorage.getItem('user');
 
     if (token && storedUser) {
       try {
@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
         setIsAdmin(userData.role === 'ADMIN');
       } catch {
-        localStorage.removeItem('user');
-        localStorage.removeItem('access_token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('access_token');
       }
     }
   }, []);
@@ -45,8 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
     setIsAuthenticated(true);
     setIsAdmin(role === 'ADMIN');
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('access_token', accessToken);
+    sessionStorage.setItem('user', JSON.stringify(userData));
   };
 
   const updateUserAvatar = (avatarUrl: string | null) => {
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      sessionStorage.setItem('user', JSON.stringify(user));
     }
   }, [user]);
 
@@ -66,9 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsAuthenticated(false);
     setIsAdmin(false);
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('user');
   };
 
   return (

@@ -29,9 +29,9 @@ export default function LoginPage() {
       const { accessToken, refreshToken } = response.data;
 
       // Store tokens FIRST so the axios interceptor can use them
-      localStorage.setItem('access_token', accessToken);
+      sessionStorage.setItem('access_token', accessToken);
       if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken);
+        sessionStorage.setItem('refresh_token', refreshToken);
       }
 
       // Now fetch user role and avatar
@@ -49,8 +49,15 @@ export default function LoginPage() {
       login(username, accessToken, userRole, avatarUrl);
       navigate(`/profile/${username}`);
     } catch (err: any) {
-      const message = err.response?.data?.message || '登录失败，请检查用户名或密码。';
-      setError(message);
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
+      if (status === 403) {
+        setError(message || '该账号已被封禁，如有疑问请联系管理员。');
+      } else if (status === 423) {
+        setError(message || '账号已被临时锁定，请稍后再试。');
+      } else {
+        setError(message || '登录失败，请检查用户名或密码。');
+      }
     } finally {
       setIsLoading(false);
     }

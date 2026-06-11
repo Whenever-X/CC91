@@ -169,6 +169,8 @@ export default function UserManage() {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleUnban(user.id, user.username)}
+                          disabled={user.username === currentUser?.username}
+                          title={user.username === currentUser?.username ? '不能解封自己' : ''}
                         >
                           解封
                         </button>
@@ -176,6 +178,8 @@ export default function UserManage() {
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleBan(user.id, user.username)}
+                          disabled={user.username === currentUser?.username}
+                          title={user.username === currentUser?.username ? '不能封禁自己' : ''}
                         >
                           封禁
                         </button>

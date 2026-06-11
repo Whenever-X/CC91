@@ -265,7 +265,14 @@ export default function DashboardPage() {
                     <li 
                       key={notif.id} 
                       className={notif.isRead ? '' : 'unread-item'}
-                      onClick={() => notif.relatedId && navigate(`/posts/${notif.relatedId}`)}
+                      onClick={() => {
+                        if (!notif.relatedId) return;
+                        if (notif.type === 'ANNOUNCEMENT') {
+                          navigate(`/announcements/${notif.relatedId}`);
+                        } else {
+                          navigate(`/posts/${notif.relatedId}`);
+                        }
+                      }}
                     >
                       <div className="notif-header">
                         <span className="notif-indicator">{notif.type === 'REPLY' ? '💬 回复' : '🔔 系统'}</span>
