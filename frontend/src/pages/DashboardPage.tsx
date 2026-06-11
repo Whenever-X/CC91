@@ -115,7 +115,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="quick-title">消息通知</div>
-          <div className="quick-desc">查看收到的回复和私信</div>
+          <div className="quick-desc">查看收到的回复和通知</div>
         </div>
 
         <div className="cc98-quick-card" onClick={() => navigate(`/profile/${user?.username}`)}>

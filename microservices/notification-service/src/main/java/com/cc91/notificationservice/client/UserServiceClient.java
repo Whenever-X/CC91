@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * Feign client for calling User Service
  */
-@FeignClient(name = "user-service")
+@FeignClient(name = "user-service", fallback = UserServiceClientFallback.class)
 public interface UserServiceClient {
 
     @GetMapping("/api/users/internal/username/{username}")

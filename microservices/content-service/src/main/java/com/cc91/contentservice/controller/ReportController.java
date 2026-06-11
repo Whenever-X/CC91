@@ -3,6 +3,7 @@ package com.cc91.contentservice.controller;
 import com.cc91.contentservice.dto.ApiResponse;
 import com.cc91.contentservice.dto.CreateReportRequest;
 import com.cc91.contentservice.entity.Report;
+import com.cc91.contentservice.exception.BadRequestException;
 import com.cc91.contentservice.exception.UnauthorizedException;
 import com.cc91.contentservice.service.ReportService;
 import jakarta.validation.Valid;
@@ -13,7 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import java.util.List;
 
 /**
  * 举报控制器
@@ -53,11 +54,10 @@ public class ReportController {
      */
     @GetMapping("/admin/reports")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<Report>> getReports(
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(reportService.getReports(status, page, size));
+    public ResponseEntity<List<Report>> getReports(
+            @RequestParam(required = false) String status) {
+        Page<Report> page = reportService.getReports(status, 0, 1000);
+        return ResponseEntity.ok(page.getContent());
     }
 
     /**
@@ -68,9 +68,19 @@ public class ReportController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Report>> handleReport(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
-        Report report = reportService.handleReport(id, body.get("status"));
+            @RequestBody HandleReportRequest request) {
+        String status = request.getStatus();
+        if (status == null || status.trim().isEmpty()) {
+            throw new BadRequestException("处理状态不能为空");
+        }
+        Report report = reportService.handleReport(id, status);
         return ResponseEntity.ok(ApiResponse.success("举报已处理", report));
+    }
+
+    public static class HandleReportRequest {
+        private String status;
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
     }
 
     private String getCurrentUsername() {

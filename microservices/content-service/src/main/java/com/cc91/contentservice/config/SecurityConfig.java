@@ -83,6 +83,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints (no JWT required)
                         .requestMatchers("GET", "/api/announcements/**").permitAll()
+                        // Actuator endpoints for Prometheus scraping
+                        .requestMatchers("/actuator/**").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

@@ -55,7 +55,7 @@ public class Report {
     }
 
     public enum TargetType { POST, COMMENT }
-    public enum ReportStatus { PENDING, REVIEWED, RESOLVED }
+    public enum ReportStatus { PENDING, REVIEWED, RESOLVED, DISMISSED }
 
     // Getters and Setters
     public Long getId() { return id; }

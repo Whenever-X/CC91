@@ -90,6 +90,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/internal/**").permitAll()
                         // Public user profile viewing
                         .requestMatchers("GET", "/api/users/{username}").permitAll()
+                        // Actuator endpoints for Prometheus scraping
+                        .requestMatchers("/actuator/**").permitAll()
                         // All other user endpoints require authentication
                         .anyRequest().authenticated()
                 )

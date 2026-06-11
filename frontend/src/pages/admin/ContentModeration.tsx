@@ -93,12 +93,12 @@ export default function ContentModeration() {
 
   const handleResolveReport = async (report: any) => {
     if (!confirm(`确定要处理此举报并删除该内容吗？此操作不可恢复。`)) return;
-    
+
     try {
-      if (report.contentType === 'POST') {
-        await deletePostMutation.mutateAsync(report.contentId);
+      if (report.targetType === 'POST') {
+        await deletePostMutation.mutateAsync(report.targetId);
       } else {
-        await deleteCommentMutation.mutateAsync(report.contentId);
+        await deleteCommentMutation.mutateAsync(report.targetId);
       }
       await handleReportMutation.mutateAsync({ id: report.id, status: 'RESOLVED' });
     } catch (err: any) {
@@ -116,7 +116,7 @@ export default function ContentModeration() {
   };
 
   const handleDeletePost = (postId: number, title: string) => {
-    if (!confirm(`确定要删除帖子「${title}」吗？`)) return;
+    if (!confirm(`确定要删除帖子「${title}」吗？此操作不可恢复。`)) return;
     deletePostMutation.mutate(postId);
   };
 
@@ -132,6 +132,15 @@ export default function ContentModeration() {
       case 'DRAFT': return '#f39c12';
       case 'DELETED': return '#e74c3c';
       default: return '#95a5a6';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'PUBLISHED': return '已发布';
+      case 'DRAFT': return '草稿';
+      case 'DELETED': return '已删除';
+      default: return status;
     }
   };
 
@@ -243,24 +252,16 @@ export default function ContentModeration() {
                           <td>{post.authorUsername}</td>
                           <td className="hide-mobile">{post.categoryName || '-'}</td>
                           <td>
-                            <select
-                              value={post.status || 'PUBLISHED'}
-                              onChange={(e) => handleStatusChange(post.id, e.target.value)}
-                              disabled={statusMutation.isPending}
-                              aria-label={`修改帖子"${post.title}"的状态`}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-sm)',
-                                background: getStatusColor(post.status || 'PUBLISHED'),
-                                color: '#fff',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <option value="PUBLISHED">已发布</option>
-                              <option value="DRAFT">草稿</option>
-                              <option value="DELETED">已删除</option>
-                            </select>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: 'var(--radius-sm)',
+                              background: getStatusColor(post.status || 'PUBLISHED'),
+                              color: '#fff',
+                              fontSize: '0.85rem',
+                            }}>
+                              {getStatusLabel(post.status || 'PUBLISHED')}
+                            </span>
                           </td>
                           <td className="hide-mobile">{post.viewCount}</td>
                           <td>
@@ -272,12 +273,26 @@ export default function ContentModeration() {
                             >
                               查看
                             </a>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => handleDeletePost(post.id, post.title)}
-                            >
-                              删除
-                            </button>
+                            {post.status === 'DELETED' ? (
+                              <button
+                                className="btn btn-success btn-sm"
+                                disabled={statusMutation.isPending}
+                                onClick={() => {
+                                  if (confirm(`确定要恢复帖子「${post.title}」吗？`)) {
+                                    statusMutation.mutate({ postId: post.id, status: 'PUBLISHED' });
+                                  }
+                                }}
+                              >
+                                恢复
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => handleDeletePost(post.id, post.title)}
+                              >
+                                删除
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -397,50 +412,30 @@ export default function ContentModeration() {
                       {reports.map((report: any) => (
                         <tr key={report.id}>
                           <td style={{ maxWidth: '300px' }}>
-                            {report.contentType === 'POST' ? (
-                              <div>
-                                <div style={{ fontWeight: '500' }}>
-                                  主题：
-                                  <a href={`/posts/${report.contentId}`} target="_blank" rel="noopener noreferrer">
-                                    {report.contentTitle}
-                                  </a>
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  内容：{report.contentBody}
-                                </div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div style={{ fontWeight: '500' }}>
-                                  评论所属帖：
-                                  <a href={`/posts/${report.contentId}`} target="_blank" rel="noopener noreferrer">
-                                    {report.contentTitle || '未知帖'}
-                                  </a>
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  评论内容：{report.contentBody}
-                                </div>
-                              </div>
-                            )}
+                            <div style={{ fontWeight: '500' }}>
+                              {report.targetType === 'POST' ? '帖子' : '评论'} ID：
+                              <a href={`/posts/${report.targetId}`} target="_blank" rel="noopener noreferrer">
+                                #{report.targetId}
+                              </a>
+                            </div>
                             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
                               举报时间：{new Date(report.createdAt).toLocaleString('zh-CN')}
                             </div>
                           </td>
                           <td>
-                            <span className={`badge ${report.contentType === 'POST' ? 'badge-info' : 'badge-warning'}`} style={{
+                            <span style={{
                               padding: '0.2rem 0.5rem',
                               borderRadius: '4px',
                               fontSize: '0.8rem',
-                              backgroundColor: report.contentType === 'POST' ? '#3498db' : '#e67e22',
+                              backgroundColor: report.targetType === 'POST' ? '#3498db' : '#e67e22',
                               color: 'white'
                             }}>
-                              {report.contentType === 'POST' ? '帖子' : '评论'}
+                              {report.targetType === 'POST' ? '帖子' : '评论'}
                             </span>
                           </td>
-                          <td>{report.reporterUsername}</td>
+                          <td>用户 #{report.reporterId}</td>
                           <td>
                             <div style={{ fontWeight: 'bold' }}>{report.reason}</div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{report.description || '无详细描述'}</div>
                           </td>
                           <td>
                             <span style={{

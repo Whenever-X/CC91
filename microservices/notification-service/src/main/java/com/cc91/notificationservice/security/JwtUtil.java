@@ -58,6 +58,14 @@ public class JwtUtil {
     }
 
     /**
+     * 从 JWT 令牌中获取用户角色
+     */
+    public String getRoleFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("role", String.class);
+    }
+
+    /**
      * 验证 JWT 令牌
      */
     public boolean validateToken(String token) {

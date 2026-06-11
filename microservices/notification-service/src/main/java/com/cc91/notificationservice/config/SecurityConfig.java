@@ -85,6 +85,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Internal API for inter-service calls (no JWT required)
                         .requestMatchers("/api/notifications/internal/**").permitAll()
+                        // Actuator endpoints for Prometheus scraping
+                        .requestMatchers("/actuator/**").permitAll()
                         // All other notification endpoints require authentication
                         .anyRequest().authenticated()
                 )

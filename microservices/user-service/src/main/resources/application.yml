@@ -38,5 +38,17 @@ account:
     max-attempts: ${ACCOUNT_LOCK_MAX_ATTEMPTS:5}
     duration-seconds: ${ACCOUNT_LOCK_DURATION:30}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 internal:
   token: ${INTERNAL_TOKEN}

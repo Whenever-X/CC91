@@ -90,11 +90,13 @@ public class PostService {
     }
 
     /**
-     * 获取帖子详情（增加浏览次数）
+     * 获取帖子详情（可选增加浏览次数）
      */
     @Transactional
-    public PostResponse getPostById(Long id) {
-        postRepository.incrementViewCount(id);
+    public PostResponse getPostById(Long id, boolean increaseView) {
+        if (increaseView) {
+            postRepository.incrementViewCount(id);
+        }
 
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
@@ -430,6 +432,8 @@ public class PostService {
             );
             response.setAuthorAvatarUrl(normalizeAvatarUrl(avatarUrl));
             response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount().longValue() : 0L);
+            response.setIsLikedByCurrentUser(false);
+            response.setIsBookmarkedByCurrentUser(false);
             return response;
         });
     }
@@ -489,6 +493,8 @@ public class PostService {
             );
             response.setAuthorAvatarUrl(normalizeAvatarUrl(avatarUrl));
             response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount().longValue() : 0L);
+            response.setIsLikedByCurrentUser(false);
+            response.setIsBookmarkedByCurrentUser(false);
             return response;
         }).collect(Collectors.toList());
     }
@@ -522,6 +528,8 @@ public class PostService {
 
         response.setAuthorAvatarUrl(normalizeAvatarUrl(avatarUrl));
         response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount().longValue() : 0L);
+        response.setIsLikedByCurrentUser(false);
+        response.setIsBookmarkedByCurrentUser(false);
 
         return response;
     }

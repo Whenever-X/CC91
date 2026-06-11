@@ -13,6 +13,7 @@ public class CreateReportRequest {
     private Long contentId;
 
     @NotBlank(message = "目标类型不能为空")
+    @jakarta.validation.constraints.Pattern(regexp = "POST|COMMENT", message = "目标类型必须是 POST 或 COMMENT")
     private String contentType;
 
     @NotBlank(message = "举报原因不能为空")

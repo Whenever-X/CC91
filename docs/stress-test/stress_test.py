@@ -36,6 +36,7 @@ class RequestResult:
     status_code: int
     latency_ms: float
     error: Optional[str] = None
+    body: Optional[str] = None
 
 
 @dataclass
@@ -112,7 +113,8 @@ class ApiClient:
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 latency = (time.perf_counter() - start) * 1000
-                return RequestResult(success=True, status_code=resp.status, latency_ms=latency)
+                resp_body = resp.read().decode("utf-8")
+                return RequestResult(success=True, status_code=resp.status, latency_ms=latency, body=resp_body)
         except urllib.error.HTTPError as e:
             latency = (time.perf_counter() - start) * 1000
             return RequestResult(success=False, status_code=e.code, latency_ms=latency, error=str(e))
@@ -148,7 +150,12 @@ class ApiClient:
                 if "data" in data and isinstance(data["data"], dict):
                     return data["data"].get("accessToken")
                 return None
-        except Exception:
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            print(f"  登录失败: HTTP {e.code} — {body}")
+            return None
+        except Exception as e:
+            print(f"  登录异常: {type(e).__name__}: {e}")
             return None
 
 
@@ -164,6 +171,8 @@ class StressTestRunner:
         self.results: list[ScenarioResult] = []
         self._stop_event = threading.Event()
         self._counter_lock = threading.Lock()
+        self._created_post_ids: list[int] = []
+        self._post_ids_lock = threading.Lock()
 
     def _run_concurrent(self, name, worker_fn, max_workers=None):
         """在 duration_s 秒内用 max_workers 个线程并发执行 worker_fn"""
@@ -293,6 +302,24 @@ class StressTestRunner:
 
     # ── 场景 4：认证用户读写混合 ──
 
+    def _record_post_id(self, result):
+        """从响应体中提取帖子 ID 并记录"""
+        if not result.success or not result.body:
+            return
+        try:
+            data = json.loads(result.body)
+            post_id = None
+            if isinstance(data, dict):
+                if "id" in data:
+                    post_id = data["id"]
+                elif "data" in data and isinstance(data["data"], dict):
+                    post_id = data["data"].get("id")
+            if post_id is not None:
+                with self._post_ids_lock:
+                    self._created_post_ids.append(post_id)
+        except (json.JSONDecodeError, KeyError):
+            pass
+
     def scenario_mixed_readwrite(self):
         print(f"\n{'='*60}")
         print(f"场景 4：认证用户读写混合（80%读 20%写）")
@@ -304,7 +331,7 @@ class StressTestRunner:
             return None
 
         counter = [0]
-        post_id_holder = [None]
+        runner = self
 
         def worker(_):
             c = counter[0]
@@ -317,6 +344,7 @@ class StressTestRunner:
                     "categoryId": 1,
                 }
                 r = self.client.post("/api/posts", body, token=token)
+                runner._record_post_id(r)
                 return r
             else:
                 # 80% 读操作
@@ -340,13 +368,17 @@ class StressTestRunner:
             print("  跳过：无法获取 JWT Token")
             return None
 
+        runner = self
+
         def worker(i):
             body = {
                 "title": f"压测帖子-{i}-{int(time.time())}",
                 "content": f"压力测试第 {i} 条并发写入帖子。",
                 "categoryId": 1,
             }
-            return self.client.post("/api/posts", body, token=token)
+            r = self.client.post("/api/posts", body, token=token)
+            runner._record_post_id(r)
+            return r
 
         return self._run_fixed_count(
             "并发写入测试（发帖）",
@@ -415,7 +447,88 @@ class StressTestRunner:
         self.scenario_post_detail_with_comments()
 
         self.print_summary()
+
+        # 自动清理本次压测产生的帖子
+        self.cleanup_created_posts()
+
         return self.results
+
+    # ── 清理 ──
+
+    def cleanup_created_posts(self):
+        """删除本次压测产生的帖子"""
+        if not self._created_post_ids:
+            print("\n本次未产生测试帖子，跳过清理。")
+            return
+
+        token = self.client.login("admin", "admin123")
+        if not token:
+            print("\n清理跳过：无法获取 JWT Token")
+            return
+
+        ids = list(self._created_post_ids)
+        total = len(ids)
+        deleted = 0
+        failed = 0
+
+        print(f"\n{'='*60}")
+        print(f"清理：删除本次压测产生的 {total} 篇帖子")
+        print(f"{'='*60}")
+
+        for post_id in ids:
+            r = self.client.delete(f"/api/posts/{post_id}", token=token)
+            if r.success:
+                deleted += 1
+            else:
+                failed += 1
+
+        self._created_post_ids.clear()
+        print(f"清理完成：删除 {deleted} 篇，失败 {failed} 篇")
+
+    def cleanup_legacy_posts(self):
+        """搜索并删除历史压测遗留的垃圾帖子"""
+        token = self.client.login("admin", "admin123")
+        if not token:
+            print("清理跳过：无法获取 JWT Token")
+            return
+
+        print(f"\n{'='*60}")
+        print('搜索并清理历史压测垃圾帖子（标题含"压测帖子"）')
+        print(f"{'='*60}")
+
+        all_ids = []
+        page = 0
+        while True:
+            try:
+                url = f"{self.client.base_url}/api/posts/search?keyword=%E5%8E%8B%E6%B5%8B%E5%B8%96%E5%AD%90&page={page}&size=50"
+                req = urllib.request.Request(url)
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    content = data.get("content", [])
+                    for post in content:
+                        title = post.get("title", "")
+                        if "压测帖子" in title:
+                            all_ids.append(post["id"])
+                    total_pages = data.get("totalPages", 1)
+                    page += 1
+                    if page >= total_pages:
+                        break
+            except Exception as e:
+                print(f"搜索失败：{e}")
+                break
+
+        if not all_ids:
+            print("未发现历史垃圾帖子。")
+            return
+
+        print(f"发现 {len(all_ids)} 篇历史垃圾帖子，开始删除...")
+        deleted = 0
+        for post_id in all_ids:
+            r = self.client.delete(f"/api/posts/{post_id}", token=token)
+            if r.success:
+                deleted += 1
+
+        print(f"清理完成：删除 {deleted}/{len(all_ids)} 篇历史垃圾帖子")
 
     def print_summary(self):
         print("\n")
@@ -472,11 +585,15 @@ if __name__ == "__main__":
     parser.add_argument("--concurrency", type=int, default=50, help="并发线程数")
     parser.add_argument("--duration", type=int, default=10, help="每个场景持续时间（秒）")
     parser.add_argument("--output", default="stress_test_result.json", help="结果输出文件")
+    parser.add_argument("--cleanup-only", action="store_true", help="仅清理历史垃圾帖子（不运行测试）")
     args = parser.parse_args()
 
     runner = StressTestRunner(args.base_url, args.concurrency, args.duration)
-    results = runner.run_all()
 
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(runner.to_dict(), f, ensure_ascii=False, indent=2)
-    print(f"\n结果已保存至: {args.output}")
+    if args.cleanup_only:
+        runner.cleanup_legacy_posts()
+    else:
+        results = runner.run_all()
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(runner.to_dict(), f, ensure_ascii=False, indent=2)
+        print(f"\n结果已保存至: {args.output}")

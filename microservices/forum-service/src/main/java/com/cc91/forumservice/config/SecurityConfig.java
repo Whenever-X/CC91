@@ -85,6 +85,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/categories/**").permitAll()
                         .requestMatchers("GET", "/api/posts/**").permitAll()
                         .requestMatchers("GET", "/api/posts/{id}/comments").permitAll()
+                        // Actuator endpoints for Prometheus scraping
+                        .requestMatchers("/actuator/**").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

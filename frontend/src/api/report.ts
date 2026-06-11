@@ -3,14 +3,10 @@ import client from './client';
 export interface Report {
   id: number;
   reporterId: number;
-  reporterUsername: string;
-  contentType: 'POST' | 'COMMENT';
-  contentId: number;
-  contentTitle?: string;
-  contentBody: string;
+  targetType: 'POST' | 'COMMENT';
+  targetId: number;
   reason: string;
-  description?: string;
-  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  status: 'PENDING' | 'REVIEWED' | 'RESOLVED' | 'DISMISSED';
   createdAt: string;
 }
 

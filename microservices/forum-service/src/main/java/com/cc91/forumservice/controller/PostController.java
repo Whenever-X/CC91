@@ -44,11 +44,14 @@ public class PostController {
 
     /**
      * 获取帖子详情
-     * GET /api/posts/{id}
+     * GET /api/posts/{id}?increaseView=true
      */
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
-        PostResponse post = postService.getPostById(id);
+    public ResponseEntity<PostResponse> getPostById(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "true") boolean increaseView
+    ) {
+        PostResponse post = postService.getPostById(id, increaseView);
         return ResponseEntity.ok(post);
     }
 

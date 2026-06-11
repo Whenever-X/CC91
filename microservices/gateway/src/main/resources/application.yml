@@ -7,6 +7,10 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: user-content-service
+          uri: lb://forum-service
+          predicates:
+            - Path=/api/users/me/posts, /api/users/me/drafts, /api/users/me/comments, /api/users/me/bookmarks
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -35,6 +39,18 @@ spring:
           uri: lb://file-service
           predicates:
             - Path=/api/upload/**, /uploads/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 eureka:
   client:
