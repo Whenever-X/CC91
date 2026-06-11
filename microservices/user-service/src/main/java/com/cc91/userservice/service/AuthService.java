@@ -50,6 +50,7 @@ public class AuthService {
     public static final String BAD_CREDENTIALS = "Invalid username or password";
     public static final String EMAIL_NOT_VERIFIED = "Please verify your email first";
     public static final String ACCOUNT_LOCKED_PREFIX = "Account locked, try again in ";
+    public static final String ACCOUNT_BANNED = "该账号已被管理员封禁，如有疑问请联系管理员";
     public static final String ACCOUNT_UNAVAILABLE = "Account unavailable, please log in again";
     public static final String REFRESH_TOKEN_INVALID = "Refresh token invalid";
     public static final String REFRESH_TOKEN_EXPIRED_OR_REVOKED = "Refresh token expired or revoked";
@@ -197,7 +198,7 @@ public class AuthService {
         }
 
         if (user.getLockUntil() == null) {
-            throw new UnauthorizedException(EMAIL_NOT_VERIFIED);
+            throw new UnauthorizedException(ACCOUNT_BANNED);
         }
 
         if (LocalDateTime.now().isBefore(user.getLockUntil())) {

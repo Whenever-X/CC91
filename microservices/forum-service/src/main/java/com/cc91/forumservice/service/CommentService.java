@@ -73,7 +73,7 @@ public class CommentService {
                                     "REPLY",
                                     "新评论通知",
                                     user.getUsername() + " 评论了你的帖子: " + post.getTitle(),
-                                    comment.getId()
+                                    post.getId()
                             )
                     );
                 }
@@ -115,7 +115,7 @@ public class CommentService {
                                 "REPLY",
                                 "新回复通知",
                                 user.getUsername() + " 回复了你在「" + postTitle + "」中的评论",
-                                reply.getId()
+                                parentComment.getPostId()
                         )
                 );
             } catch (Exception e) {

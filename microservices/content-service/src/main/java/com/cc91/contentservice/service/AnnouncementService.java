@@ -123,7 +123,7 @@ public class AnnouncementService {
             for (UserInfoDTO user : allUsers) {
                 try {
                     notificationServiceClient.createNotification(new CreateNotificationRequest(
-                            user.getId(), "SYSTEM", "新公告: " + announcement.getTitle(),
+                            user.getId(), "ANNOUNCEMENT", "新公告: " + announcement.getTitle(),
                             announcement.getContent(), announcement.getId()
                     ));
                 } catch (Exception ex) {

@@ -71,10 +71,14 @@ public class AuthController {
             LoginResponse response = authService.login(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            if (e.getMessage() != null && e.getMessage().startsWith(AuthService.ACCOUNT_LOCKED_PREFIX)) {
-                return ResponseEntity.status(HttpStatus.LOCKED).body(ApiResponse.error(e.getMessage()));
+            String msg = e.getMessage();
+            if (msg != null && msg.startsWith(AuthService.ACCOUNT_LOCKED_PREFIX)) {
+                return ResponseEntity.status(HttpStatus.LOCKED).body(ApiResponse.error(msg));
             }
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(e.getMessage()));
+            if (msg != null && msg.equals(AuthService.ACCOUNT_BANNED)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(msg));
+            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(msg));
         }
     }
 
