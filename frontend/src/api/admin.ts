@@ -115,3 +115,11 @@ export async function adminBanUser(id: number): Promise<void> {
 export async function adminUnbanUser(id: number): Promise<void> {
   await client.put(`/admin/users/${id}/unban`);
 }
+
+/**
+ * Delete user
+ * DELETE /api/admin/users/{id}
+ */
+export async function adminDeleteUser(id: number): Promise<void> {
+  await client.delete(`/admin/users/${id}`);
+}

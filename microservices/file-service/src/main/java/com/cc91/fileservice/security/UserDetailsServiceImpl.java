@@ -1,5 +1,6 @@
 package com.cc91.fileservice.security;
 
+import com.cc91.fileservice.client.UserServiceClient;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +12,10 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.Map;
+
 /**
- * Resolves UserDetails directly from the JWT token claims.
- * Avoids a Feign round-trip to User Service on every authenticated request.
+ * Resolves UserDetails from JWT + checks lock status via User Service.
  */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -21,9 +23,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private static final Logger logger = LoggerFactory.getLogger(UserDetailsServiceImpl.class);
 
     private final JwtUtil jwtUtil;
+    private final UserServiceClient userServiceClient;
 
-    public UserDetailsServiceImpl(JwtUtil jwtUtil) {
+    public UserDetailsServiceImpl(JwtUtil jwtUtil, UserServiceClient userServiceClient) {
         this.jwtUtil = jwtUtil;
+        this.userServiceClient = userServiceClient;
     }
 
     @Override
@@ -33,10 +37,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             Long userId = jwtUtil.getUserIdFromToken(token);
             String role = jwtUtil.getRoleFromToken(token);
             if (userId != null && role != null) {
+                boolean locked = checkLocked(userId);
                 return org.springframework.security.core.userdetails.User.builder()
                         .username(username)
                         .password("")
                         .roles(role)
+                        .accountLocked(locked)
                         .build();
             }
         }
@@ -45,6 +51,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .password("")
                 .roles("USER")
                 .build();
+    }
+
+    private boolean checkLocked(Long userId) {
+        try {
+            Map<String, Boolean> result = userServiceClient.isUserLocked(userId);
+            return result != null && Boolean.TRUE.equals(result.get("locked"));
+        } catch (Exception e) {
+            logger.warn("Failed to check lock status for userId={}, assuming unlocked: {}", userId, e.getMessage());
+            return false;
+        }
     }
 
     private String extractCurrentToken() {

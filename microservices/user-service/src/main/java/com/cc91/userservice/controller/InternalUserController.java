@@ -1,6 +1,8 @@
 package com.cc91.userservice.controller;
 
 import com.cc91.userservice.dto.UserInfoDTO;
+import com.cc91.userservice.entity.User;
+import com.cc91.userservice.repository.UserRepository;
 import com.cc91.userservice.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,15 +20,25 @@ import java.util.stream.Collectors;
 public class InternalUserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public InternalUserController(UserService userService) {
+    public InternalUserController(UserService userService, UserRepository userRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserInfoDTO> getUserById(@PathVariable Long id) {
         UserInfoDTO userInfo = userService.getUserInfoById(id);
         return ResponseEntity.ok(userInfo);
+    }
+
+    @GetMapping("/{userId}/locked")
+    public ResponseEntity<Map<String, Boolean>> isUserLocked(@PathVariable Long userId) {
+        boolean locked = userRepository.findById(userId)
+                .map(User::getIsLocked)
+                .orElse(false);
+        return ResponseEntity.ok(Map.of("locked", locked));
     }
 
     @GetMapping("/username/{username}")

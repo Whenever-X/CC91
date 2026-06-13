@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminGetUsers, adminBanUser, adminUnbanUser, adminUpdateUserRole } from '../../api/admin';
+import { adminGetUsers, adminBanUser, adminUnbanUser, adminUpdateUserRole, adminDeleteUser } from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
 import { queryKeys } from '../../lib/queryKeys';
 
@@ -83,6 +83,26 @@ export default function UserManage() {
       if (!confirm(`确定要将用户「${username}」的角色修改为「${label}」吗？`)) return;
     }
     roleMutation.mutate({ userId, role: newRole, username });
+  };
+
+  // 删除用户的 mutation
+  const deleteMutation = useMutation({
+    mutationFn: ({ userId }: { userId: number; username: string }) =>
+      adminDeleteUser(userId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
+      setError('');
+      setSuccess(`用户「${variables.username}」已删除`);
+    },
+    onError: (err: any) => {
+      setSuccess('');
+      setError(err.response?.data?.message || '删除失败');
+    },
+  });
+
+  const handleDelete = (userId: number, username: string) => {
+    if (!confirm(`确定要删除用户「${username}」吗？此操作不可撤销！`)) return;
+    deleteMutation.mutate({ userId, username });
   };
 
   return (
@@ -184,6 +204,15 @@ export default function UserManage() {
                           封禁
                         </button>
                       )}
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ marginLeft: '0.25rem', background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                        onClick={() => handleDelete(user.id, user.username)}
+                        disabled={user.username === currentUser?.username}
+                        title={user.username === currentUser?.username ? '不能删除自己' : '删除用户'}
+                      >
+                        删除
+                      </button>
                     </td>
                   </tr>
                 ))}

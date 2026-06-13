@@ -16,4 +16,7 @@ public interface UserServiceClient {
 
     @PostMapping("/api/users/internal/batch")
     List<UserInfoDTO> getUsersByIds(@RequestBody List<Long> ids);
+
+    @GetMapping("/api/users/internal/{userId}/locked")
+    Map<String, Boolean> isUserLocked(@PathVariable("userId") Long userId);
 }

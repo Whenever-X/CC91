@@ -5,6 +5,8 @@ import com.cc91.fileservice.dto.UserInfoDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * Feign client for calling User Service internal APIs.
  */
@@ -16,4 +18,7 @@ public interface UserServiceClient {
 
     @PutMapping("/api/users/internal/{id}/avatar")
     Void updateAvatar(@PathVariable("id") Long id, @RequestBody UpdateAvatarRequest request);
+
+    @GetMapping("/api/users/internal/{userId}/locked")
+    Map<String, Boolean> isUserLocked(@PathVariable("userId") Long userId);
 }

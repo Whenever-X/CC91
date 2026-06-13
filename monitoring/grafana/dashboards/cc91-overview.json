@@ -80,7 +80,7 @@
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 6, "y": 16 },
       "targets": [{
-        "expr": "jvm_memory_used_bytes{area=\"heap\"} / jvm_memory_max_bytes{area=\"heap\"}",
+        "expr": "jvm_memory_used_bytes{area=\"heap\"} / on(application, id) jvm_memory_max_bytes{area=\"heap\"} > 0",
         "legendFormat": "{{application}}",
         "refId": "A"
       }],
