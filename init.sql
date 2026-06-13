@@ -147,10 +147,18 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 
 -- 管理员（密码: admin123）
 INSERT IGNORE INTO users (username, email, password_hash, role) VALUES
-('admin', 'admin@cc91.com', '$2b$12$AbBS8jX8QpsvtqePZhFpmOhpCOlPc46rBYbVD0LdnjM8vS.HtihS.', 'ADMIN');
+('admin', 'admin@cc91.com', '$2b$12$AbBS8jX8QpsvtqePZhFpmOhpCOlPc46rBYbVD0LdnjM8vS.HtihS.', 'ADMIN'),
+('user', 'user@cc91.com', '$2b$12$gSfPVajelv7QVxdBkCpz9Os2BH.n/a6x8T7YP9nKKFX0A/BktqOWG', 'USER');
 
 -- 默认版块
 INSERT IGNORE INTO categories (name, description, sort_order) VALUES
-('综合讨论', '论坛综合话题讨论区', 1),
-('技术交流', '编程与技术分享', 2),
-('公告通知', '论坛公告与站务', 3);
+('技术讨论hikami', '分享编程技术、开发经验和问题解决方案hikami', 1),
+('灌水区', '日常闲聊、非技术话题交流', 2),
+('资源分享', '分享学习资源、工具和项目', 3),
+('招聘求职', '技术岗位招聘与求职信息', 4);
+
+-- 默认公告
+INSERT IGNORE INTO announcements (id, title, content, author_id, is_pinned, created_at, updated_at) VALUES
+(1, 'CC91 论坛经典 CC98 视觉风格美化重构上线公告', 'CC91 论坛已完成经典 CC98 视觉风格的全面美化重构，新版界面在保留经典 BBS 布局的基础上，引入了响应式设计与现代化交互体验。主要更新包括：\n\n1. 全新 CC98 复古金色主题配色方案\n2. 双栏布局：左栏版块与帖子列表，右栏热门推荐\n3. 公告栏经典粗顶部边框样式\n4. 移动端自适应优化\n\n感谢各位用户的支持，欢迎体验并提出反馈！', 1, 1, '2026-05-28 23:07:08', '2026-05-28 23:07:08'),
+(2, '关于规范社区讨论、禁止灌水与文明发言的通知', '为营造良好的社区氛围，CC91 论坛现就发言规范作如下通知：\n\n1. 禁止在非灌水版块发布无意义内容（如纯表情、单字回复等）\n2. 禁止人身攻击、侮辱性语言及任何形式的歧视言论\n3. 讨论应围绕主题展开，不得恶意歪楼\n4. 违规者将视情节给予警告或禁言处理\n\n请各位用户自觉遵守，共同维护社区环境。', 1, 0, '2026-05-28 23:07:08', '2026-05-28 23:07:08'),
+(3, '推荐使用主流现代浏览器以获得最佳体验', 'CC91 论坛采用现代化前端技术构建，为确保最佳浏览体验，推荐使用以下浏览器：\n\n• Google Chrome（推荐版本 100+）\n• Microsoft Edge（推荐版本 100+）\n• Safari（推荐版本 15+）\n• Firefox（推荐版本 100+）\n\n不建议使用 IE 浏览器访问，部分功能可能无法正常使用。', 1, 0, '2026-05-28 23:07:08', '2026-05-28 23:07:08');
