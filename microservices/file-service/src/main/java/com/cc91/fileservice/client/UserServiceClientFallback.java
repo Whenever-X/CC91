@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 /**
  * Fallback for UserServiceClient when User Service is unavailable.
  * Returns safe defaults so file operations can report meaningful errors.
@@ -25,5 +27,11 @@ public class UserServiceClientFallback implements UserServiceClient {
     public Void updateAvatar(Long id, UpdateAvatarRequest request) {
         logger.warn("User Service unavailable, cannot update avatar for userId={}", id);
         return null;
+    }
+
+    @Override
+    public Map<String, Boolean> isUserLocked(Long userId) {
+        logger.warn("User Service unavailable, assuming user {} is not locked", userId);
+        return Map.of("locked", false);
     }
 }

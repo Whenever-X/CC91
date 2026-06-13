@@ -614,12 +614,12 @@ curl -s http://localhost:8081/actuator/prometheus | head -20
 curl http://localhost:9000/actuator/health
 
 # 4. 展示 Prometheus Targets
-浏览器访问 http://localhost:9090/targets
+浏览器访问 http://localhost:19090/targets
 （应显示 8 个 target 全部 UP）</code></pre>
 
 <p><strong>演示技巧</strong>：</p>
 <ul>
-  <li>故意停掉一个服务（<code>docker stop cc91-notification-service</code>），30 秒后 Grafana 告警面板变红</li>
+  <li>故意停掉一个服务（<code>docker stop cc91-notification-service</code>），约 30-45 秒后对应状态卡变红 DOWN，1 分钟后 Prometheus 告警进入 PENDING</li>
   <li>展示 Prometheus → Alerts 页面，ServiceDown 告警进入 PENDING 状态</li>
   <li>恢复服务后告警自动消除，演示监控闭环</li>
 </ul>

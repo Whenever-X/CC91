@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Component
 public class UserServiceClientFallback implements UserServiceClient {
 
@@ -19,5 +21,11 @@ public class UserServiceClientFallback implements UserServiceClient {
     public UserInfoDTO getUserById(Long id) {
         log.warn("Fallback: getUserById({}) — user-service unavailable", id);
         return new UserInfoDTO(id, "unknown", "UNKNOWN", null);
+    }
+
+    @Override
+    public Map<String, Boolean> isUserLocked(Long userId) {
+        log.warn("Fallback: isUserLocked({}) — user-service unavailable, assuming unlocked", userId);
+        return Map.of("locked", false);
     }
 }

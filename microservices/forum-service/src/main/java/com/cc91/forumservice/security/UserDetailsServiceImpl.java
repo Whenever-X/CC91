@@ -2,6 +2,7 @@ package com.cc91.forumservice.security;
 
 import com.cc91.forumservice.client.UserServiceClient;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;

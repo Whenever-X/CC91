@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fallback for UserServiceClient when User Service is unavailable.
@@ -34,5 +35,11 @@ public class UserServiceClientFallback implements UserServiceClient {
         return ids.stream()
                 .map(id -> new UserInfoDTO(id, "未知用户", "USER", null))
                 .toList();
+    }
+
+    @Override
+    public Map<String, Boolean> isUserLocked(Long userId) {
+        logger.warn("User Service unavailable, assuming user {} is not locked", userId);
+        return Map.of("locked", false);
     }
 }
