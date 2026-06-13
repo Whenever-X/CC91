@@ -12,7 +12,7 @@ if (-not $skipBuild) {
     foreach ($s in $services) {
         Write-Host "  $s..." -NoNewline
         pushd "$PSScriptRoot/../microservices/$s"
-        $out = mvn package -DskipTests -B -q 2>&1
+        $out = mvn clean package -DskipTests -B -q 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-Host " 失败!" -ForegroundColor Red
             Write-Host $out

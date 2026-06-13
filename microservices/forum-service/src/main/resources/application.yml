@@ -4,13 +4,12 @@ spring:
   application:
     name: forum-service
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/cc91_db?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/cc91_db?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&sessionVariables=character_set_client=utf8mb4,character_set_connection=utf8mb4,character_set_results=utf8mb4}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
-    generate-ddl: true
   cloud:
     openfeign:
       circuitbreaker:

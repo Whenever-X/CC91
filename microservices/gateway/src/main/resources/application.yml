@@ -5,6 +5,9 @@ spring:
   application:
     name: api-gateway
   cloud:
+    loadbalancer:
+      retry:
+        enabled: true
     gateway:
       routes:
         - id: user-content-service
@@ -56,5 +59,6 @@ eureka:
   instance:
     prefer-ip-address: true
   client:
+    registry-fetch-interval-seconds: 5
     service-url:
       defaultZone: http://localhost:8761/eureka/

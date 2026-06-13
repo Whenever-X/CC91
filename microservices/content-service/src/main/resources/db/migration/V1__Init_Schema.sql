@@ -1,3 +1,28 @@
+-- ===== 用户 =====
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_locked BIT(1) NOT NULL DEFAULT 0,
+    failed_login_attempts INT DEFAULT 0,
+    lock_until DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id BIGINT PRIMARY KEY,
+    avatar_url VARCHAR(500),
+    bio VARCHAR(500),
+    location VARCHAR(100),
+    website VARCHAR(200),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===== 版块 =====
 CREATE TABLE IF NOT EXISTS categories (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -7,6 +32,7 @@ CREATE TABLE IF NOT EXISTS categories (
     INDEX idx_sort_order (sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===== 帖子 =====
 CREATE TABLE IF NOT EXISTS posts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -25,6 +51,7 @@ CREATE TABLE IF NOT EXISTS posts (
     FOREIGN KEY (category_id) REFERENCES categories(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===== 评论 =====
 CREATE TABLE IF NOT EXISTS comments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     post_id BIGINT NOT NULL,
@@ -43,6 +70,7 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (parent_id) REFERENCES comments(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===== 点赞 / 收藏 =====
 CREATE TABLE IF NOT EXISTS post_likes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -59,6 +87,7 @@ CREATE TABLE IF NOT EXISTS post_bookmarks (
     UNIQUE KEY uk_post_bookmarks_user_post (user_id, post_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===== 通知 =====
 CREATE TABLE IF NOT EXISTS notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -73,6 +102,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_notifications_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===== 公告 =====
 CREATE TABLE IF NOT EXISTS announcements (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -85,6 +115,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     INDEX idx_announcements_is_pinned (is_pinned)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===== 举报 =====
 CREATE TABLE IF NOT EXISTS reports (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     reporter_id BIGINT NOT NULL,
@@ -99,51 +130,9 @@ CREATE TABLE IF NOT EXISTS reports (
     INDEX idx_reports_target (target_type, target_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Record Flyway V1 migration as already applied (init.sql created the correct schema)
-CREATE TABLE IF NOT EXISTS flyway_schema_history (
-    installed_rank INT PRIMARY KEY,
-    version VARCHAR(50),
-    description VARCHAR(200),
-    type VARCHAR(20),
-    script VARCHAR(1000),
-    checksum INT,
-    installed_by VARCHAR(100),
-    installed_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    execution_time INT,
-    success BOOLEAN
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-INSERT IGNORE INTO flyway_schema_history
-    (installed_rank, version, description, type, script, checksum, installed_by, installed_on, execution_time, success)
-VALUES
-    (1, '1', 'Fix Reports Status Column', 'SQL', 'V1__Fix_Reports_Status_Column.sql',
-     0, 'init', NOW(), 0, 1);
-
--- ===== 种子数据 =====
-
--- 用户表（由 Hibernate 管理，这里确保存在以插入种子数据）
-CREATE TABLE IF NOT EXISTS users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    role VARCHAR(20) NOT NULL DEFAULT 'USER',
-    password_hash VARCHAR(255) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    is_locked BIT(1) NOT NULL DEFAULT 0,
-    failed_login_attempts INT DEFAULT 0,
-    lock_until DATETIME NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 用户资料表
-CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id BIGINT PRIMARY KEY,
-    avatar_url VARCHAR(500),
-    bio VARCHAR(500),
-    location VARCHAR(100),
-    website VARCHAR(200),
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ======================================================================
+-- 种子数据
+-- ======================================================================
 
 -- 管理员（密码: admin123）
 INSERT IGNORE INTO users (username, email, password_hash, role) VALUES
@@ -152,7 +141,7 @@ INSERT IGNORE INTO users (username, email, password_hash, role) VALUES
 
 -- 默认版块
 INSERT IGNORE INTO categories (name, description, sort_order) VALUES
-('技术讨论hikami', '分享编程技术、开发经验和问题解决方案hikami', 1),
+('技术讨论', '分享编程技术、开发经验和问题解决方案', 1),
 ('灌水区', '日常闲聊、非技术话题交流', 2),
 ('资源分享', '分享学习资源、工具和项目', 3),
 ('招聘求职', '技术岗位招聘与求职信息', 4);
