@@ -117,7 +117,15 @@ class ApiClient:
                 return RequestResult(success=True, status_code=resp.status, latency_ms=latency, body=resp_body)
         except urllib.error.HTTPError as e:
             latency = (time.perf_counter() - start) * 1000
-            return RequestResult(success=False, status_code=e.code, latency_ms=latency, error=str(e))
+            resp_body = e.read().decode("utf-8", errors="replace")
+            error = f"HTTP {e.code}: {resp_body[:1000]}" if resp_body else str(e)
+            return RequestResult(
+                success=False,
+                status_code=e.code,
+                latency_ms=latency,
+                error=error,
+                body=resp_body,
+            )
         except Exception as e:
             latency = (time.perf_counter() - start) * 1000
             return RequestResult(success=False, status_code=0, latency_ms=latency, error=str(e))
@@ -184,15 +192,36 @@ class StressTestRunner:
         start = time.perf_counter()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = []
-            for _ in range(max_workers * 10):
-                if self._stop_event.is_set():
-                    break
-                futures.append(pool.submit(worker_fn))
-
             deadline = start + self.duration_s
-            while time.perf_counter() < deadline:
-                time.sleep(0.1)
+            futures = {pool.submit(worker_fn) for _ in range(max_workers)}
+
+            while futures:
+                timeout = max(0.0, deadline - time.perf_counter())
+                if timeout == 0:
+                    self._stop_event.set()
+                    break
+
+                done, futures = concurrent.futures.wait(
+                    futures,
+                    timeout=min(0.1, timeout),
+                    return_when=concurrent.futures.FIRST_COMPLETED,
+                )
+
+                for f in done:
+                    r: RequestResult = f.result()
+                    result.total_requests += 1
+                    if r.success:
+                        result.success_count += 1
+                    else:
+                        result.fail_count += 1
+                        if r.error:
+                            result.errors.append(r.error)
+                    result.latencies.append(r.latency_ms)
+                    result.status_codes[r.status_code] = result.status_codes.get(r.status_code, 0) + 1
+
+                    if time.perf_counter() < deadline:
+                        futures.add(pool.submit(worker_fn))
+
             self._stop_event.set()
 
             for f in concurrent.futures.as_completed(futures, timeout=60):
@@ -251,12 +280,14 @@ class StressTestRunner:
             ("GET /api/announcements", lambda: self.client.get("/api/announcements")),
         ]
         idx = [0]
+        idx_lock = threading.Lock()
 
         def worker():
             if self._stop_event.is_set():
                 return RequestResult(success=True, status_code=0, latency_ms=0)
-            ep_name, fn = endpoints[idx[0] % len(endpoints)]
-            idx[0] += 1
+            with idx_lock:
+                ep_name, fn = endpoints[idx[0] % len(endpoints)]
+                idx[0] += 1
             return fn()
 
         return self._run_concurrent("只读基准测试（公开接口）", worker)
@@ -330,16 +361,13 @@ class StressTestRunner:
             print("  跳过：无法获取 JWT Token")
             return None
 
-        counter = [0]
         runner = self
 
-        def worker(_):
-            c = counter[0]
-            counter[0] += 1
+        def worker(c):
             if c % 5 == 0:
                 # 20% 写操作
                 body = {
-                    "title": f"压测帖子-{threading.get_ident()}-{c}",
+                    "title": f"压测帖子-{c}-{int(time.time() * 1000)}",
                     "content": "这是一条压力测试自动创建的帖子内容，用于测试并发写入性能。",
                     "categoryId": 1,
                 }
@@ -404,10 +432,12 @@ class StressTestRunner:
             post_id = 1
 
         counter = [0]
+        counter_lock = threading.Lock()
 
         def worker():
-            c = counter[0]
-            counter[0] += 1
+            with counter_lock:
+                c = counter[0]
+                counter[0] += 1
             if c % 2 == 0:
                 return self.client.get(f"/api/posts/{post_id}")
             else:
@@ -436,7 +466,7 @@ class StressTestRunner:
                 print(f"预检通过：后端可达 (HTTP {resp.status})\n")
         except Exception as e:
             print(f"预检失败：后端不可达 — {e}")
-            print("请先启动后端服务：cd backend && mvn spring-boot:run")
+            print("请先启动微服务（Eureka → Gateway → 业务服务），Gateway 端口: 9000")
             sys.exit(1)
 
         self.scenario_readonly_baseline()
@@ -581,10 +611,10 @@ class StressTestRunner:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CC91 论坛系统压力测试")
-    parser.add_argument("--base-url", default="http://localhost:8080", help="后端地址")
+    parser.add_argument("--base-url", default="http://localhost:9000", help="后端地址（微服务 Gateway）")
     parser.add_argument("--concurrency", type=int, default=50, help="并发线程数")
     parser.add_argument("--duration", type=int, default=10, help="每个场景持续时间（秒）")
-    parser.add_argument("--output", default="stress_test_result.json", help="结果输出文件")
+    parser.add_argument("--output", default="docs/stress-test/stress_test_result.json", help="结果输出文件")
     parser.add_argument("--cleanup-only", action="store_true", help="仅清理历史垃圾帖子（不运行测试）")
     args = parser.parse_args()
 
